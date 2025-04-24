@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import useAuth from "../store/slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch } from "@/store";
+import {
+  clearError,
+  loginByEmailThunk,
+  loginByPhoneThunk,
+} from "@/store/slices/authSlice";
+import { RootState } from "@/store";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +26,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, error, login, clearError } = useAuth();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated, error, loading } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
   // Redirect if coming from a specific page
   const from = location.state?.from?.pathname || "/dashboard";
@@ -36,47 +45,33 @@ const Login = () => {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
-
-    setLoading(true);
-    clearError();
+    if (!email || !password) {
+      dispatch(clearError());
+      return;
+    }
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      login({
-        id: "1",
-        name: "Test User",
-        email: email,
-      });
+      await dispatch(loginByEmailThunk({ email, password })).unwrap();
       navigate(from, { replace: true });
     } catch (err) {
       console.error("Login failed:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || !password) return;
-
-    setLoading(true);
-    clearError();
+    if (!phone || !password) {
+      dispatch(clearError());
+      return;
+    }
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      login({
-        id: "1",
-        name: "Test User",
-        email: "test@example.com",
-      });
+      await dispatch(
+        loginByPhoneThunk({ phoneNumber: phone, password })
+      ).unwrap();
       navigate(from, { replace: true });
     } catch (err) {
       console.error("Login failed:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -99,103 +94,87 @@ const Login = () => {
               Access your account using email or phone
             </CardDescription>
           </CardHeader>
-
           <CardContent>
             <Tabs defaultValue="email" className="w-full">
-              <TabsList className="grid grid-cols-2 mb-4">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="email">Email</TabsTrigger>
                 <TabsTrigger value="phone">Phone</TabsTrigger>
               </TabsList>
-
               <TabsContent value="email">
-                <form onSubmit={handleEmailLogin}>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="name@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="email-password">Password</Label>
-                      </div>
-                      <Input
-                        id="email-password"
-                        type="password"
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    {error && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign In"}
-                    </Button>
+                <form onSubmit={handleEmailLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Signing in..." : "Sign In with Email"}
+                  </Button>
                 </form>
               </TabsContent>
-
               <TabsContent value="phone">
-                <form onSubmit={handlePhoneLogin}>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="Enter your phone number"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone-password">Password</Label>
-                      <Input
-                        id="phone-password"
-                        type="password"
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    {error && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign In"}
-                    </Button>
+                <form onSubmit={handlePhoneLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Signing in..." : "Sign In with Phone"}
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
-
-          <CardFooter className="flex flex-col space-y-2 border-t pt-4">
+          <CardFooter className="flex flex-col space-y-4">
             <div className="text-sm text-center text-muted-foreground">
               Don't have an account?{" "}
               <Link to="/register" className="text-primary hover:underline">
-                Create an account
+                Sign up
               </Link>
             </div>
           </CardFooter>

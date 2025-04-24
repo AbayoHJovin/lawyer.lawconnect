@@ -77,12 +77,12 @@ const Lawyers = () => {
     retry: 1,
   });
 
-  const lawyers = response?.data || [];
+  const lawyers = useMemo(() => response?.data || [], [response?.data]);
 
   // Get unique locations and specializations for filter options
   const locations = useMemo(() => {
     const uniqueLocations = new Set(lawyers.map((lawyer) => lawyer.location));
-    return Array.from(uniqueLocations);
+    return Array.from(uniqueLocations) as string[];
   }, [lawyers]);
 
   const specializations = useMemo(() => {
@@ -92,7 +92,7 @@ const Lawyers = () => {
           lawyer.specializations?.map((spec) => spec.specializationName) || []
       )
     );
-    return Array.from(uniqueSpecs);
+    return Array.from(uniqueSpecs) as string[];
   }, [lawyers]);
 
   // Filter lawyers based on current filters
@@ -203,12 +203,12 @@ const Lawyers = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <div className="container mx-auto py-8 flex-1">
-        <div className="mb-8">
+      <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Discover Lawyers</h1>
           <p className="text-muted-foreground">
             Find and connect with experienced legal professionals
-          </p>
-        </div>
+        </p>
+      </div>
 
         {/* Filters Section */}
         <div className="mb-8 p-6 bg-card rounded-lg shadow-sm">
@@ -286,7 +286,7 @@ const Lawyers = () => {
                 max={5}
                 step={0.1}
               />
-            </div>
+        </div>
 
             {/* Availability Filter */}
             <div className="flex items-center space-x-2">
@@ -305,7 +305,7 @@ const Lawyers = () => {
         {/* Results Count */}
         <div className="mb-4 text-sm text-muted-foreground">
           Showing {filteredLawyers.length} of {lawyers.length} lawyers
-        </div>
+      </div>
 
         {/* Lawyers Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -371,7 +371,7 @@ const Lawyers = () => {
                 </Button>
               </CardFooter>
             </Card>
-          ))}
+              ))}
         </div>
       </div>
       <Footer />

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuth from "../store/slices/authSlice";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
+import { createConsultation } from "@/services/consultationService";
 import {
   Dialog,
   DialogContent,
@@ -13,15 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface BookConsultationModalProps {
   lawyerId: string;
@@ -37,23 +32,32 @@ const BookConsultationModal = ({
   onClose,
 }: BookConsultationModalProps) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [time, setTime] = useState("");
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date || !time || !description) return;
+    if (!subject) {
+      toast.error("Subject is required");
+      return;
+    }
 
     setLoading(true);
     try {
-      // TODO: Implement actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await createConsultation({
+        lawyerId,
+        subject,
+        description: description || undefined,
+      });
+      toast.success("Consultation booked successfully!");
+      onClose();
       navigate("/consultations");
-    } catch (error) {
-      console.error("Failed to book consultation:", error);
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message || "Failed to book consultation"
+      );
     } finally {
       setLoading(false);
     }
@@ -71,50 +75,23 @@ const BookConsultationModal = ({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="time">Time</Label>
+            <Label htmlFor="subject">Subject *</Label>
             <Input
-              id="time"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
+              id="subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Enter consultation subject"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description (Optional)</Label>
             <Textarea
               id="description"
               placeholder="Briefly describe your legal issue..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              required
             />
           </div>
 
@@ -123,7 +100,14 @@ const BookConsultationModal = ({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Booking..." : "Book Consultation"}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Booking...
+                </>
+              ) : (
+                "Book Consultation"
+              )}
             </Button>
           </DialogFooter>
         </form>

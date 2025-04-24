@@ -1,13 +1,45 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import {
+  loginByEmail,
+  loginByPhone,
+  refreshAccessToken,
+  setAccessToken,
+  getAccessToken,
+  removeAccessToken,
+  isTokenExpired,
+} from "@/services/authService";
 import API from "../../lib/axios";
 import { jwtDecode } from "jwt-decode";
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
+interface TokenResponse {
+  message: string;
+  data: string;
+}
+
+interface JwtPayload {
+  sub: string;
+  fullName?: string;
   phone?: string;
-  profilePicture?: string;
+  exp: number;
+  iat: number;
+  [key: string]: unknown;
+}
+
+interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  languagePreference: string;
+  location: string;
+}
+
+interface AuthError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 }
 
 interface AuthState {
@@ -23,7 +55,7 @@ interface LoginByEmailPayload {
 }
 
 interface LoginByPhonePayload {
-  phone: string;
+  phoneNumber: string;
   password: string;
 }
 
@@ -43,63 +75,200 @@ interface ChangePasswordPayload {
   confirmPassword: string;
 }
 
+interface BackendCitizen {
+  id: string;
+  email: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+}
+
 interface LoginResponse {
-  token: string;
-  user: User;
+  accessToken: string;
+  refreshToken: string;
+  citizen: {
+    id: string;
+    email: string;
+    phone: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+interface CitizenDto {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  languagePreference: string;
+  location: string;
+}
+
+interface CitizenResponse {
+  data: CitizenDto;
+}
+
+interface ApiResponse<T> {
+  data: T;
 }
 
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  loading: false,
+  loading: true,
   error: null,
 };
 
-// Check if token exists in local storage on app load
-const token = localStorage.getItem("auth_token");
-if (token) {
-  try {
-    const decoded: any = jwtDecode(token);
-    // Check if token is expired
-    if (decoded.exp * 1000 > Date.now()) {
-      initialState.isAuthenticated = true;
-      initialState.user = decoded.user;
-    } else {
-      localStorage.removeItem("auth_token");
-    }
-  } catch (error) {
-    localStorage.removeItem("auth_token");
-  }
-}
-
-export const loginByEmail = createAsyncThunk(
-  "auth/loginByEmail",
-  async (payload: LoginByEmailPayload, { rejectWithValue }) => {
+export const checkAuth = createAsyncThunk(
+  "auth/checkAuth",
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await API.post<LoginResponse>(
-        "/citizens/login-by-email",
-        payload
+      const token = getAccessToken();
+
+      // If no token, try to refresh
+      if (!token) {
+        const refreshResponse = await refreshAccessToken();
+        if (refreshResponse.data) {
+          setAccessToken(refreshResponse.data);
+          // Fetch user data with new token
+          const decoded = jwtDecode<JwtPayload>(refreshResponse.data);
+          const userResponse = await API.get<ApiResponse<CitizenDto>>(
+            `/citizens/find-by-email?email=${decoded.sub}`
+          );
+          return {
+            accessToken: refreshResponse.data,
+            citizen: userResponse.data.data,
+          };
+        }
+        throw new Error("No access token received");
+      }
+
+      // If token exists, check if it's expired
+      if (isTokenExpired(token)) {
+        const refreshResponse = await refreshAccessToken();
+        if (refreshResponse.data) {
+          setAccessToken(refreshResponse.data);
+          // Fetch user data with new token
+          const decoded = jwtDecode<JwtPayload>(refreshResponse.data);
+          const userResponse = await API.get<ApiResponse<CitizenDto>>(
+            `/citizens/find-by-email?email=${decoded.sub}`
+          );
+          return {
+            accessToken: refreshResponse.data,
+            citizen: userResponse.data.data,
+          };
+        }
+        throw new Error("Token refresh failed");
+      }
+
+      // Token is valid, fetch user data
+      const decoded = jwtDecode<JwtPayload>(token);
+      const userResponse = await API.get<ApiResponse<CitizenDto>>(
+        `/citizens/find-by-email?email=${decoded.sub}`
       );
-      localStorage.setItem("auth_token", response.data.token);
-      return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      return {
+        accessToken: token,
+        citizen: userResponse.data.data,
+      };
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      return rejectWithValue(
+        authError.response?.data?.message || "Authentication check failed"
+      );
     }
   }
 );
 
-export const loginByPhone = createAsyncThunk(
-  "auth/loginByPhone",
-  async (payload: LoginByPhonePayload, { rejectWithValue }) => {
+export const loginByEmailThunk = createAsyncThunk(
+  "auth/loginByEmail",
+  async (credentials: LoginByEmailPayload, { rejectWithValue }) => {
     try {
-      const response = await API.post<LoginResponse>(
-        "/citizens/login-by-phone",
-        payload
+      const response = await loginByEmail(
+        credentials.email,
+        credentials.password
       );
-      localStorage.setItem("auth_token", response.data.token);
-      return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      setAccessToken(response.accessToken);
+
+      // Fetch complete user data
+      const userResponse = await API.get<ApiResponse<CitizenDto>>(
+        `/citizens/find-by-email?email=${credentials.email}`
+      );
+
+      return {
+        accessToken: response.accessToken,
+        citizen: userResponse.data.data,
+      };
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      return rejectWithValue(
+        authError.response?.data?.message || "Login failed"
+      );
+    }
+  }
+);
+
+export const loginByPhoneThunk = createAsyncThunk(
+  "auth/loginByPhone",
+  async (credentials: LoginByPhonePayload, { rejectWithValue }) => {
+    try {
+      const response = await loginByPhone(
+        credentials.phoneNumber,
+        credentials.password
+      );
+      setAccessToken(response.accessToken);
+
+      // Fetch complete user data using the email from the login response
+      const userResponse = await API.get<ApiResponse<CitizenDto>>(
+        `/citizens/find-by-email?email=${response.citizen.email}`
+      );
+
+      return {
+        accessToken: response.accessToken,
+        citizen: userResponse.data.data,
+      };
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      return rejectWithValue(
+        authError.response?.data?.message || "Login failed"
+      );
+    }
+  }
+);
+
+export const refreshTokenThunk = createAsyncThunk(
+  "auth/refreshToken",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await refreshAccessToken();
+      if (response.data) {
+        setAccessToken(response.data);
+
+        // Fetch user data using the token
+        const userResponse = await API.get<CitizenResponse>("/citizens/me", {
+          headers: {
+            Authorization: `Bearer ${response.data}`,
+          },
+        });
+
+        return {
+          accessToken: response.data,
+          citizen: {
+            id: userResponse.data.data.id,
+            fullName: userResponse.data.data.fullName,
+            email: userResponse.data.data.email,
+            phoneNumber: userResponse.data.data.phoneNumber,
+            languagePreference:
+              userResponse.data.data.languagePreference || "en",
+            location: userResponse.data.data.location || "",
+          },
+        };
+      }
+      throw new Error("No access token received");
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      return rejectWithValue(
+        authError.response?.data?.message || "Token refresh failed"
+      );
     }
   }
 );
@@ -110,9 +279,10 @@ export const registerCitizen = createAsyncThunk(
     try {
       const response = await API.post("/citizens/add", payload);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const authError = error as AuthError;
       return rejectWithValue(
-        error.response?.data?.message || "Registration failed"
+        authError.response?.data?.message || "Registration failed"
       );
     }
   }
@@ -124,9 +294,37 @@ export const changePassword = createAsyncThunk(
     try {
       const response = await API.put("/citizens/change-password", payload);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const authError = error as AuthError;
       return rejectWithValue(
-        error.response?.data?.message || "Password change failed"
+        authError.response?.data?.message || "Password change failed"
+      );
+    }
+  }
+);
+
+export const fetchCurrentUser = createAsyncThunk(
+  "auth/fetchCurrentUser",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        throw new Error("No access token found");
+      }
+
+      // Get email from token
+      const decoded = jwtDecode<JwtPayload>(token);
+      const email = decoded.sub;
+
+      // Fetch complete user data
+      const response = await API.get<ApiResponse<CitizenDto>>(
+        `/citizens/find-by-email?email=${email}`
+      );
+      return response.data.data;
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      return rejectWithValue(
+        authError.response?.data?.message || "Failed to fetch user data"
       );
     }
   }
@@ -136,71 +334,92 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    logout(state) {
+    logout: (state) => {
       state.isAuthenticated = false;
       state.user = null;
-      localStorage.removeItem("auth_token");
+      state.error = null;
+      removeAccessToken();
     },
-    clearError(state) {
+    clearError: (state) => {
       state.error = null;
     },
   },
   extraReducers: (builder) => {
-    // Login by email
-    builder.addCase(loginByEmail.pending, (state) => {
+    builder
+      // Check Auth
+      .addCase(checkAuth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(checkAuth.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.citizen;
+      })
+      .addCase(checkAuth.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.isAuthenticated = false;
+        state.user = null;
+      })
+      // Login by Email
+      .addCase(loginByEmailThunk.pending, (state) => {
       state.loading = true;
       state.error = null;
-    });
-    builder.addCase(loginByEmail.fulfilled, (state, action) => {
+      })
+      .addCase(loginByEmailThunk.fulfilled, (state, action) => {
       state.loading = false;
       state.isAuthenticated = true;
-      state.user = action.payload.user;
-    });
-    builder.addCase(loginByEmail.rejected, (state, action) => {
+        state.user = action.payload.citizen;
+      })
+      .addCase(loginByEmailThunk.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
-    });
-
-    // Login by phone
-    builder.addCase(loginByPhone.pending, (state) => {
+      })
+      // Login by Phone
+      .addCase(loginByPhoneThunk.pending, (state) => {
       state.loading = true;
       state.error = null;
-    });
-    builder.addCase(loginByPhone.fulfilled, (state, action) => {
+      })
+      .addCase(loginByPhoneThunk.fulfilled, (state, action) => {
       state.loading = false;
       state.isAuthenticated = true;
-      state.user = action.payload.user;
-    });
-    builder.addCase(loginByPhone.rejected, (state, action) => {
+        state.user = action.payload.citizen;
+      })
+      .addCase(loginByPhoneThunk.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
-    });
-
-    // Register citizen
-    builder.addCase(registerCitizen.pending, (state) => {
+      })
+      // Refresh Token
+      .addCase(refreshTokenThunk.pending, (state) => {
       state.loading = true;
       state.error = null;
-    });
-    builder.addCase(registerCitizen.fulfilled, (state) => {
+      })
+      .addCase(refreshTokenThunk.fulfilled, (state, action) => {
       state.loading = false;
-      // Do not log user in after registration - as per requirements, redirect to login
-    });
-    builder.addCase(registerCitizen.rejected, (state, action) => {
+        state.isAuthenticated = true;
+        state.user = action.payload.citizen;
+      })
+      .addCase(refreshTokenThunk.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
-    });
-
-    // Change password
-    builder.addCase(changePassword.pending, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+      })
+      // Fetch Current User
+      .addCase(fetchCurrentUser.pending, (state) => {
       state.loading = true;
       state.error = null;
-    });
-    builder.addCase(changePassword.fulfilled, (state) => {
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
       state.loading = false;
-    });
-    builder.addCase(changePassword.rejected, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
+        state.user = null;
+        state.isAuthenticated = false;
     });
   },
 });

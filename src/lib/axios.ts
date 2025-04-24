@@ -1,20 +1,17 @@
-
-import axios from 'axios';
+import axios from "axios";
+import { refreshAccessToken, getAccessToken } from "@/services/authService";
 
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api/v1',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
+  withCredentials: true,
 });
 
-// Add request interceptor to attach JWT token to every request
+// Add a request interceptor
 API.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAccessToken();
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -23,17 +20,29 @@ API.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle common errors
+// Add a response interceptor
 API.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If the error is 401 and we haven't tried to refresh the token yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const { data } = await refreshAccessToken();
+        // Update the Authorization header
+        originalRequest.headers.Authorization = `Bearer ${data}`;
+        // Retry the original request
+        return API(originalRequest);
+      } catch (refreshError) {
+        // If refresh token fails, redirect to login
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
+      }
     }
+
     return Promise.reject(error);
   }
 );

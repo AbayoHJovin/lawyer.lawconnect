@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "@/store";
+import { logout } from "@/store/slices/authSlice";
 import { cn } from "@/lib/utils";
 import {
   User,
@@ -11,13 +14,13 @@ import {
   ChevronLeft,
   Home,
 } from "lucide-react";
-import useAuth from "../store/slices/authSlice";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Sidebar = () => {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state: RootState) => state.auth);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
@@ -26,7 +29,7 @@ const Sidebar = () => {
   };
 
   const handleLogout = () => {
-    logout();
+    dispatch(logout());
   };
 
   // If on mobile, we always collapse the sidebar
@@ -36,11 +39,11 @@ const Sidebar = () => {
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Profile", href: "/profile", icon: User },
     { name: "Consultations", href: "/consultations", icon: FileText },
-    { name: "Lawyer Discovery", href: "/lawyers", icon: User },
-    { name: "Ratings", href: "/ratings", icon: Star },
-    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
+  useEffect(()=>{
+    console.log("user",user);
+  },[user])
   return (
     <>
       {/* Mobile Menu Button */}
@@ -88,7 +91,9 @@ const Sidebar = () => {
                   <User size={20} />
                 </div>
                 <div>
-                  <p className="font-medium truncate">{user?.name || "User"}</p>
+                  <p className="font-medium truncate">
+                    {user?.fullName || "User"}
+                  </p>
                   <p className="text-sm text-sidebar-foreground/70 truncate">
                     {user?.email || ""}
                   </p>

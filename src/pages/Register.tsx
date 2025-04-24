@@ -29,7 +29,7 @@ const Register = () => {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.auth);
   const { toast } = useToast();
-
+  
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -101,14 +101,14 @@ const Register = () => {
       [name]: value,
     }));
   };
-
+  
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-
+    
     dispatch(clearError());
     const resultAction = await dispatch(registerCitizen(formData));
-
+    
     if (registerCitizen.fulfilled.match(resultAction)) {
       toast({
         title: "Registration Successful",
@@ -129,7 +129,7 @@ const Register = () => {
             Create your citizen account
           </p>
         </div>
-
+        
         <Card className="border-border/40 shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl text-center">
@@ -139,7 +139,7 @@ const Register = () => {
               Fill in your details to create your account
             </CardDescription>
           </CardHeader>
-
+          
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
@@ -153,7 +153,7 @@ const Register = () => {
                   required
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -168,7 +168,7 @@ const Register = () => {
                   <p className="text-sm text-destructive">{formErrors.email}</p>
                 )}
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>
                 <Input
@@ -219,7 +219,7 @@ const Register = () => {
                   required
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -237,7 +237,7 @@ const Register = () => {
                   </p>
                 )}
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -255,19 +255,19 @@ const Register = () => {
                   </p>
                 )}
               </div>
-
+              
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
+              
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
           </CardContent>
-
+          
           <CardFooter className="flex flex-col space-y-2 border-t pt-4">
             <div className="text-sm text-center text-muted-foreground">
               Already have an account?{" "}
