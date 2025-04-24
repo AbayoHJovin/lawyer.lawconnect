@@ -29,7 +29,7 @@ const Dashboard = () => {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["consultations"],
+      queryKey: ["consultations"],
     queryFn: getConsultationsForCitizen,
     enabled: !!user, // Only fetch when user is authenticated
   });
@@ -106,7 +106,7 @@ const Dashboard = () => {
             Welcome back, {user ? user.fullName : "User"}!
           </p>
         </div>
-
+        
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -122,7 +122,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -137,7 +137,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -150,7 +150,7 @@ const Dashboard = () => {
               <p className="text-xs text-muted-foreground">Ready to start</p>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -166,18 +166,18 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
-
+        
         <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
+        <Card>
+          <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>
                 Your latest consultations and updates
               </CardDescription>
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
               {consultations.length > 0 ? (
-                <div className="space-y-4">
+              <div className="space-y-4">
                   {consultations.slice(0, 3).map((consultation) => (
                     <div
                       key={consultation.id}
@@ -195,7 +195,7 @@ const Dashboard = () => {
                             : "bg-gray-500"
                         }`}
                       />
-                      <div>
+                    <div>
                         <p className="text-sm font-medium">
                           {consultation.subject}
                         </p>
@@ -203,18 +203,18 @@ const Dashboard = () => {
                           {new Date(
                             consultation.createdAt
                           ).toLocaleDateString()}
-                        </p>
-                      </div>
+                      </p>
                     </div>
-                  ))}
-                </div>
-              ) : (
+                  </div>
+                ))}
+              </div>
+            ) : (
                 <p className="text-muted-foreground text-center py-4">
                   No recent consultations
                 </p>
-              )}
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
 
           <Card>
             <CardHeader>

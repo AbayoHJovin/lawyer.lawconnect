@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthCheck } from "@/lib/auth";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 import {
   getLawyerById,
   getLawyerRatings,
@@ -32,11 +34,14 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BookConsultationModal from "@/components/BookConsultationModal";
 
 const LawyerProfile = () => {
   const { lawyerId } = useParams<{ lawyerId: string }>();
   const navigate = useNavigate();
   const { checkAuth } = useAuthCheck();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   const {
     data: lawyerResponse,
@@ -62,10 +67,14 @@ const LawyerProfile = () => {
   const ratings = ratingsResponse?.data || [];
 
   const handleBookConsultation = () => {
-    checkAuth(() => {
-      // TODO: Implement booking consultation logic
-      console.log("Booking consultation with lawyer:", lawyerId);
-    });
+    if (!user) {
+      checkAuth(() => {
+        // This will redirect to login if not authenticated
+        navigate("/login");
+      });
+      return;
+    }
+    setIsBookingModalOpen(true);
   };
 
   if (isLoadingLawyer) {
@@ -276,6 +285,15 @@ const LawyerProfile = () => {
         </div>
       </div>
       <Footer />
+
+      {lawyer && (
+        <BookConsultationModal
+          lawyerId={lawyer.id}
+          lawyerName={lawyer.fullName}
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
