@@ -1,22 +1,24 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { checkAuthThunk } from "@/store/slices/authSlice";
+import { checkAuth } from "@/store/slices/authSlice";
 import { AppDispatch } from "@/store";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthentication = async () => {
       try {
-        await dispatch(checkAuthThunk()).unwrap();
+        await dispatch(checkAuth()).unwrap();
       } catch (error) {
-        console.error("Auth check failed:", error);
+        console.error("Authentication check failed:", error);
       }
     };
 
-    checkAuth();
+    checkAuthentication();
   }, [dispatch]);
 
   return <>{children}</>;
 };
+
+export default AuthProvider;

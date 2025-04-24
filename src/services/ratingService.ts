@@ -1,27 +1,46 @@
+import API from "@/lib/axios";
+import { getAccessToken } from "@/services/authService";
 
-import API from '../lib/axios';
-
-export interface Rating {
-  id?: number;
-  citizenId: number;
-  lawyerId: number;
-  rating: number;
-  review?: string;
-  createdAt?: string;
+export interface RatingDto {
+  ratingId: string; // UUID
+  citizenName: string;
+  ratingScore: number;
+  reviewText: string;
 }
 
-export interface AddRatingPayload {
-  lawyerId: number;
-  rating: number;
-  review?: string;
+export interface AddRatingRequest {
+  lawyerId: string; // UUID
+  score: number;
+  reviewText: string;
 }
 
-export const addRating = async (payload: AddRatingPayload): Promise<Rating> => {
-  const response = await API.post('/rating/addRating', payload);
+export interface ApiResponse<T> {
+  message: string;
+  data: T;
+}
+
+export const getLawyerRatings = async (lawyerId: string) => {
+  const response = await API.get<ApiResponse<RatingDto[]>>(
+    `/citizens/get-all-rating/${lawyerId}`
+  );
   return response.data;
 };
 
-export const getRatingsByLawyer = async (lawyerId: number): Promise<Rating[]> => {
-  const response = await API.get(`/rating/lawyer/${lawyerId}`);
+export const rateLawyer = async (request: AddRatingRequest) => {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("Authentication required");
+  }
+
+  const response = await API.post<ApiResponse<void>>(
+    "/citizens/cit/rate-lawyer",
+    request,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      withCredentials: true,
+    }
+  );
   return response.data;
 };

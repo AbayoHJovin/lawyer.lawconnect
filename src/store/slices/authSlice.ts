@@ -113,7 +113,7 @@ interface ApiResponse<T> {
 }
 
 const initialState: AuthState = {
-  isAuthenticated: false,
+  isAuthenticated: !!getAccessToken(),
   user: null,
   loading: false,
   error: null,
@@ -125,53 +125,51 @@ export const checkAuth = createAsyncThunk(
     try {
       const token = getAccessToken();
 
-      // If no token, try to refresh
+      // If no token, clear state and reject
       if (!token) {
-        const refreshResponse = await refreshAccessToken();
-        if (refreshResponse.data) {
-          setAccessToken(refreshResponse.data);
-          // Fetch user data with new token
-          const decoded = jwtDecode<JwtPayload>(refreshResponse.data);
-          const userResponse = await API.get<ApiResponse<CitizenDto>>(
-            `/citizens/find-by-email?email=${decoded.sub}`
-          );
-          return {
-            accessToken: refreshResponse.data,
-            citizen: userResponse.data.data,
-          };
-        }
-        throw new Error("No access token received");
+        removeAccessToken();
+        return rejectWithValue("No authentication token found");
       }
 
       // If token exists, check if it's expired
       if (isTokenExpired(token)) {
-        const refreshResponse = await refreshAccessToken();
-        if (refreshResponse.data) {
-          setAccessToken(refreshResponse.data);
-          // Fetch user data with new token
-          const decoded = jwtDecode<JwtPayload>(refreshResponse.data);
-          const userResponse = await API.get<ApiResponse<CitizenDto>>(
-            `/citizens/find-by-email?email=${decoded.sub}`
-          );
-          return {
-            accessToken: refreshResponse.data,
-            citizen: userResponse.data.data,
-          };
+        try {
+          const refreshResponse = await refreshAccessToken();
+          if (refreshResponse.data) {
+            setAccessToken(refreshResponse.data);
+            // Fetch user data with new token
+            const decoded = jwtDecode<JwtPayload>(refreshResponse.data);
+            const userResponse = await API.get<ApiResponse<CitizenDto>>(
+              `/citizens/find-by-email?email=${decoded.sub}`
+            );
+            return {
+              accessToken: refreshResponse.data,
+              citizen: userResponse.data.data,
+            };
+          }
+        } catch (refreshError) {
+          removeAccessToken();
+          throw new Error("Token refresh failed");
         }
-        throw new Error("Token refresh failed");
       }
 
       // Token is valid, fetch user data
-      const decoded = jwtDecode<JwtPayload>(token);
-      const userResponse = await API.get<ApiResponse<CitizenDto>>(
-        `/citizens/find-by-email?email=${decoded.sub}`
-      );
-      return {
-        accessToken: token,
-        citizen: userResponse.data.data,
-      };
+      try {
+        const decoded = jwtDecode<JwtPayload>(token);
+        const userResponse = await API.get<ApiResponse<CitizenDto>>(
+          `/citizens/find-by-email?email=${decoded.sub}`
+        );
+        return {
+          accessToken: token,
+          citizen: userResponse.data.data,
+        };
+      } catch (userError) {
+        removeAccessToken();
+        throw new Error("Failed to fetch user data");
+      }
     } catch (error: unknown) {
       const authError = error as AuthError;
+      removeAccessToken();
       return rejectWithValue(
         authError.response?.data?.message || "Authentication check failed"
       );
@@ -352,15 +350,17 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
-        state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.citizen;
+        state.loading = false;
+        state.error = null;
       })
       .addCase(checkAuth.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
         state.isAuthenticated = false;
         state.user = null;
+        state.loading = false;
+        state.error = action.payload as string;
+        removeAccessToken();
       })
       // Login by Email
       .addCase(loginByEmailThunk.pending, (state) => {
@@ -368,13 +368,17 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(loginByEmailThunk.fulfilled, (state, action) => {
-        state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.citizen;
+        state.loading = false;
+        state.error = null;
       })
       .addCase(loginByEmailThunk.rejected, (state, action) => {
+        state.isAuthenticated = false;
+        state.user = null;
         state.loading = false;
         state.error = action.payload as string;
+        removeAccessToken();
       })
       // Login by Phone
       .addCase(loginByPhoneThunk.pending, (state) => {
@@ -382,13 +386,17 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(loginByPhoneThunk.fulfilled, (state, action) => {
-        state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.citizen;
+        state.loading = false;
+        state.error = null;
       })
       .addCase(loginByPhoneThunk.rejected, (state, action) => {
+        state.isAuthenticated = false;
+        state.user = null;
         state.loading = false;
         state.error = action.payload as string;
+        removeAccessToken();
       })
       // Refresh Token
       .addCase(refreshTokenThunk.pending, (state) => {

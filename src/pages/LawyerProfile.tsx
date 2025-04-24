@@ -34,6 +34,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAppSelector } from "@/store";
 import BookConsultationModal from "@/components/BookConsultationModal";
+import RatingForm from "@/components/RatingForm";
 
 const LawyerProfile = () => {
   const { lawyerId } = useParams<{ lawyerId: string }>();
@@ -217,67 +218,85 @@ const LawyerProfile = () => {
           </Card>
 
           {/* Ratings Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Reviews</CardTitle>
-              <CardDescription>
-                What clients say about {lawyer.fullName}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingRatings ? (
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, index) => (
-                    <div key={index} className="space-y-2">
-                      <Skeleton className="h-4 w-1/3" />
-                      <Skeleton className="h-4 w-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : ratingsError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>
-                    Failed to load reviews. Please try again later.
-                  </AlertDescription>
-                </Alert>
-              ) : ratings.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  This lawyer hasn't been rated yet.
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {ratings.map((rating) => (
-                    <div key={rating.ratingId} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {rating.citizenName}
-                          </span>
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < rating.ratingScore
-                                    ? "text-yellow-500 fill-yellow-500"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
+          <div className="space-y-6">
+            {/* Rating Form */}
+            {isAuthenticated && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Rate this Lawyer</CardTitle>
+                  <CardDescription>
+                    Share your experience with {lawyer.fullName}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RatingForm lawyerId={lawyer.id} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Ratings List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Reviews</CardTitle>
+                <CardDescription>
+                  What clients say about {lawyer.fullName}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingRatings ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, index) => (
+                      <div key={index} className="space-y-2">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                    ))}
+                  </div>
+                ) : ratingsError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>
+                      Failed to load reviews. Please try again later.
+                    </AlertDescription>
+                  </Alert>
+                ) : ratings.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    This lawyer hasn't been rated yet.
+                  </p>
+                ) : (
+                  <div className="space-y-6">
+                    {ratings.map((rating) => (
+                      <div key={rating.ratingId} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {rating.citizenName}
+                            </span>
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < rating.ratingScore
+                                      ? "text-yellow-500 fill-yellow-500"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
                           </div>
                         </div>
+                        <p className="text-sm text-muted-foreground">
+                          {rating.reviewText}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {rating.reviewText}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
       <Footer />
