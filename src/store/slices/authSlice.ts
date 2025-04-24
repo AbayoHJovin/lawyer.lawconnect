@@ -328,6 +328,18 @@ export const fetchCurrentUser = createAsyncThunk(
   }
 );
 
+export const logoutThunk = createAsyncThunk(
+  "auth/logout",
+  async (_, { rejectWithValue }) => {
+    try {
+      await logout();
+      return null;
+    } catch (error) {
+      return rejectWithValue("Logout failed");
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -428,6 +440,22 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.user = null;
         state.isAuthenticated = false;
+      })
+      // Logout
+      .addCase(logoutThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(logoutThunk.fulfilled, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.loading = false;
+        state.error = null;
+        // Navigate to home page will be handled in the component
+      })
+      .addCase(logoutThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

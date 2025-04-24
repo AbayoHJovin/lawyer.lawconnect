@@ -1,21 +1,31 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/store";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAppDispatch } from "@/store";
-import { logout } from "@/store/slices/authSlice";
+import { logoutThunk } from "@/store/slices/authSlice";
 
 const Navbar = () => {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    dispatch(logout());
-    toast({
-      title: "Logged out successfully",
-      description: "You have been logged out of your account.",
-    });
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutThunk()).unwrap();
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+      navigate("/"); // Redirect to landing page
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

@@ -143,3 +143,38 @@ export const isTokenExpired = (token: string): boolean => {
     return true;
   }
 };
+
+export const logout = async (): Promise<void> => {
+  try {
+    // Call the backend logout endpoint
+    await API.post<ApiResponse<void>>(
+      "/citizens/logout",
+      {},
+      {
+        withCredentials: true, // Important for cookie handling
+      }
+    );
+
+    // Clean up local storage
+    removeAccessToken();
+
+    // Clear any other auth-related storage if exists
+    localStorage.clear();
+
+    // Clear cookies by setting them to expire
+    document.cookie =
+      "access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    document.cookie =
+      "refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still clear local storage and cookies even if API call fails
+    removeAccessToken();
+    localStorage.clear();
+    document.cookie =
+      "access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    document.cookie =
+      "refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    throw error;
+  }
+};
