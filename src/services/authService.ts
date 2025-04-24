@@ -1,5 +1,6 @@
 import API from "../lib/axios";
 import { jwtDecode } from "jwt-decode";
+import { AxiosError } from "axios";
 
 export interface LoginResponse {
   accessToken: string;
@@ -16,6 +17,11 @@ export interface LoginResponse {
 export interface TokenResponse {
   message: string;
   data: string;
+}
+
+export interface AuthError {
+  message: string;
+  code: string;
 }
 
 const TOKEN_KEY = "accessToken";
@@ -36,30 +42,60 @@ export const loginByEmail = async (
   email: string,
   password: string
 ): Promise<LoginResponse> => {
-  const response = await API.post<LoginResponse>(
-    "/citizens/login-by-email",
-    {
-      email,
-      password,
-    },
-    { withCredentials: true }
-  );
-  return response.data;
+  try {
+    const response = await API.post<LoginResponse>(
+      "/citizens/login-by-email",
+      {
+        email,
+        password,
+      },
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      const errorMessage = error.response?.data?.message || "Login failed";
+      const errorCode = error.response?.data?.code || "AUTH_ERROR";
+      throw {
+        message: errorMessage,
+        code: errorCode,
+      } as AuthError;
+    }
+    throw {
+      message: "An unexpected error occurred",
+      code: "UNKNOWN_ERROR",
+    } as AuthError;
+  }
 };
 
 export const loginByPhone = async (
   phone: string,
   password: string
 ): Promise<LoginResponse> => {
-  const response = await API.post<LoginResponse>(
-    "/citizens/login-by-phone",
-    {
-      phone,
-      password,
-    },
-    { withCredentials: true }
-  );
-  return response.data;
+  try {
+    const response = await API.post<LoginResponse>(
+      "/citizens/login-by-phone",
+      {
+        phone,
+        password,
+      },
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      const errorMessage = error.response?.data?.message || "Login failed";
+      const errorCode = error.response?.data?.code || "AUTH_ERROR";
+      throw {
+        message: errorMessage,
+        code: errorCode,
+      } as AuthError;
+    }
+    throw {
+      message: "An unexpected error occurred",
+      code: "UNKNOWN_ERROR",
+    } as AuthError;
+  }
 };
 
 export const refreshAccessToken = async (): Promise<TokenResponse> => {
@@ -71,19 +107,31 @@ export const refreshAccessToken = async (): Promise<TokenResponse> => {
   return response.data;
 };
 
-export const validateToken = async (): Promise<boolean> => {
+export const validateToken = async (): Promise<{
+  isValid: boolean;
+  error?: string;
+}> => {
   try {
     const token = getAccessToken();
-    if (!token) return false;
+    if (!token) return { isValid: false, error: "No token found" };
 
     const response = await API.get("/auth/validate-token", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.status === 200;
+    return { isValid: response.status === 200 };
   } catch (error) {
-    return false;
+    if (error instanceof AxiosError) {
+      return {
+        isValid: false,
+        error: error.response?.data?.message || "Token validation failed",
+      };
+    }
+    return {
+      isValid: false,
+      error: "An unexpected error occurred during token validation",
+    };
   }
 };
 
@@ -95,4 +143,3 @@ export const isTokenExpired = (token: string): boolean => {
     return true;
   }
 };
- 

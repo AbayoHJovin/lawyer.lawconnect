@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store";
+import { useAppSelector } from "@/store";
 import { createConsultation } from "@/services/consultationService";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -15,49 +15,67 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 interface BookConsultationModalProps {
-  lawyerId: string;
-  lawyerName: string;
   isOpen: boolean;
   onClose: () => void;
+  lawyer: {
+    id: string;
+    fullName: string;
+  };
 }
 
 const BookConsultationModal = ({
-  lawyerId,
-  lawyerName,
   isOpen,
   onClose,
+  lawyer,
 }: BookConsultationModalProps) => {
   const navigate = useNavigate();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const [subject, setSubject] = useState("");
-  const [description, setDescription] = useState("");
+  const { toast } = useToast();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    subject: "",
+    description: "",
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject) {
-      toast.error("Subject is required");
+    
+    if (!isAuthenticated) {
+      navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
 
-    setLoading(true);
-    try {
-      await createConsultation({
-        lawyerId,
-        subject,
-        description: description || undefined,
+    if (!formData.subject.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a subject for the consultation",
+        variant: "destructive",
       });
-      toast.success("Consultation booked successfully!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await createConsultation({
+        lawyerId: lawyer.id,
+        subject: formData.subject.trim(),
+        description: formData.description.trim(),
+      });
+
+      toast({
+        title: "Success",
+        description: "Consultation request has been sent successfully",
+      });
       onClose();
-      navigate("/consultations");
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to book consultation"
-      );
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to book consultation",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -65,22 +83,24 @@ const BookConsultationModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Book Consultation with {lawyerName}</DialogTitle>
+          <DialogTitle>Book a Consultation</DialogTitle>
           <DialogDescription>
-            Schedule a consultation with {lawyerName}. Please provide the
-            following details.
+            Request a consultation with {lawyer.fullName}
           </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="subject">Subject *</Label>
             <Input
               id="subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
               placeholder="Enter consultation subject"
+              value={formData.subject}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, subject: e.target.value }))
+              }
               required
             />
           </div>
@@ -89,9 +109,12 @@ const BookConsultationModal = ({
             <Label htmlFor="description">Description (Optional)</Label>
             <Textarea
               id="description"
-              placeholder="Briefly describe your legal issue..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe your legal matter..."
+              value={formData.description}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, description: e.target.value }))
+              }
+              rows={4}
             />
           </div>
 

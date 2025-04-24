@@ -115,7 +115,7 @@ interface ApiResponse<T> {
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  loading: true,
+  loading: false,
   error: null,
 };
 
@@ -364,63 +364,63 @@ const authSlice = createSlice({
       })
       // Login by Email
       .addCase(loginByEmailThunk.pending, (state) => {
-      state.loading = true;
-      state.error = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(loginByEmailThunk.fulfilled, (state, action) => {
-      state.loading = false;
-      state.isAuthenticated = true;
+        state.loading = false;
+        state.isAuthenticated = true;
         state.user = action.payload.citizen;
       })
       .addCase(loginByEmailThunk.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
+        state.loading = false;
+        state.error = action.payload as string;
       })
       // Login by Phone
       .addCase(loginByPhoneThunk.pending, (state) => {
-      state.loading = true;
-      state.error = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(loginByPhoneThunk.fulfilled, (state, action) => {
-      state.loading = false;
-      state.isAuthenticated = true;
+        state.loading = false;
+        state.isAuthenticated = true;
         state.user = action.payload.citizen;
       })
       .addCase(loginByPhoneThunk.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
+        state.loading = false;
+        state.error = action.payload as string;
       })
       // Refresh Token
       .addCase(refreshTokenThunk.pending, (state) => {
-      state.loading = true;
-      state.error = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(refreshTokenThunk.fulfilled, (state, action) => {
-      state.loading = false;
+        state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.citizen;
       })
       .addCase(refreshTokenThunk.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
+        state.loading = false;
+        state.error = action.payload as string;
         state.isAuthenticated = false;
         state.user = null;
       })
       // Fetch Current User
       .addCase(fetchCurrentUser.pending, (state) => {
-      state.loading = true;
-      state.error = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
-      state.loading = false;
+        state.loading = false;
         state.user = action.payload;
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
+        state.loading = false;
+        state.error = action.payload as string;
         state.user = null;
         state.isAuthenticated = false;
-    });
+      });
   },
 });
 

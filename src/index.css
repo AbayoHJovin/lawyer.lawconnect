@@ -3,9 +3,6 @@
 @tailwind utilities;
 
 /* Apply Playfair Display as the default font for a legal theme */
-body {
-  font-family: 'Playfair Display', serif;
-}
 
 @layer base {
   :root {

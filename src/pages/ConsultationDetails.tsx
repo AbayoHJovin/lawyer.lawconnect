@@ -1,8 +1,8 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  getConsultationsForCitizen,
-  ConsultationStatus,
+  getConsultationById,
+  type ConsultationStatus,
 } from "@/services/consultationService";
 import Layout from "@/components/Layout";
 import {
@@ -15,35 +15,34 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Calendar, User } from "lucide-react";
 import { format } from "date-fns";
+import { API_BASE_URL } from "@/config";
 
 const ConsultationDetails = () => {
-  const { consultationId } = useParams();
+  const { consultationId } = useParams<{ consultationId: string }>();
+
   const {
-    data: consultationsData,
+    data: consultationResponse,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["consultations"],
-    queryFn: getConsultationsForCitizen,
+    queryKey: ["consultation", consultationId],
+    queryFn: () => getConsultationById(consultationId!),
+    enabled: !!consultationId,
   });
 
-  const consultation = consultationsData?.data.find(
-    (c) => c.id === consultationId
-  );
+  const consultation = consultationResponse?.data;
 
   const getStatusColor = (status: ConsultationStatus) => {
     switch (status) {
-      case ConsultationStatus.COMPLETED:
+      case "COMPLETED":
         return "bg-green-500";
-      case ConsultationStatus.ONGOING:
+      case "ACCEPTED":
         return "bg-blue-500";
-      case ConsultationStatus.ACCEPTED:
+      case "PENDING":
         return "bg-yellow-500";
-      case ConsultationStatus.PENDING:
-        return "bg-gray-500";
-      case ConsultationStatus.REJECTED:
+      case "REJECTED":
         return "bg-red-500";
       default:
         return "bg-gray-500";
@@ -52,18 +51,25 @@ const ConsultationDetails = () => {
 
   const getStatusText = (status: ConsultationStatus) => {
     switch (status) {
-      case ConsultationStatus.COMPLETED:
+      case "COMPLETED":
         return "Completed";
-      case ConsultationStatus.ONGOING:
-        return "Ongoing";
-      case ConsultationStatus.ACCEPTED:
+      case "ACCEPTED":
         return "Accepted";
-      case ConsultationStatus.PENDING:
+      case "PENDING":
         return "Pending";
-      case ConsultationStatus.REJECTED:
+      case "REJECTED":
         return "Rejected";
       default:
         return "Unknown";
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    try {
+      return format(new Date(timestamp), "PPP");
+    } catch (error) {
+      console.error("Invalid date:", timestamp);
+      return "Invalid date";
     }
   };
 
@@ -149,8 +155,7 @@ const ConsultationDetails = () => {
             Consultation Details
           </h1>
           <p className="text-muted-foreground">
-            Viewing consultation from{" "}
-            {format(new Date(consultation.createdAt), "PPP")}
+            Viewing consultation from {formatDate(consultation.createdAt)}
           </p>
         </div>
 
@@ -158,9 +163,10 @@ const ConsultationDetails = () => {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle>{consultation.subject}</CardTitle>
-                <CardDescription>
-                  Created on {format(new Date(consultation.createdAt), "PPP")}
+                <CardTitle>{consultation.subject || "No Subject"}</CardTitle>
+                <CardDescription className="flex items-center gap-2 mt-2">
+                  <Calendar className="h-4 w-4" />
+                  {formatDate(consultation.createdAt)}
                 </CardDescription>
               </div>
               <Badge className={getStatusColor(consultation.status)}>
@@ -172,13 +178,20 @@ const ConsultationDetails = () => {
             <div>
               <h3 className="text-sm font-medium mb-2">Description</h3>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {consultation.description}
+                {consultation.description || "No description available"}
               </p>
             </div>
             <div>
               <h3 className="text-sm font-medium mb-2">Lawyer Information</h3>
               <p className="text-sm text-muted-foreground">
-                Lawyer ID: {consultation.lawyerID}
+                Lawyer ID:Lawyer:{" "}
+                        <a
+                          href={`${API_BASE_URL}/lawyers/${consultation.lawyerID}`}
+                          target="_blank"
+                          className="text-blue-500 hover:underline"
+                        >
+                          View lawyer profile
+                        </a>
               </p>
             </div>
             <div>

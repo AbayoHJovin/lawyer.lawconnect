@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getConsultationsForCitizen,
-  ConsultationStatus,
+  type ConsultationStatus,
   type ConsultationDto,
 } from "@/services/consultationService";
 import { getLawyerById } from "@/services/lawyerService";
@@ -30,11 +30,14 @@ import { format } from "date-fns";
 import { FileText, Calendar, User, Search, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "@/config";
 
 const Consultations = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ConsultationStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<ConsultationStatus | "all">(
+    "all"
+  );
   const [lawyerFilter, setLawyerFilter] = useState("");
 
   const {
@@ -48,18 +51,27 @@ const Consultations = () => {
 
   const consultations = consultationsData?.data || [];
 
+  useEffect(() => {
+    console.log("Consultations", consultations);
+  }, [consultations]);
+
   const filteredConsultations = useMemo(() => {
     return consultations.filter((consultation) => {
+      const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
-        consultation.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        consultation.description.toLowerCase().includes(searchTerm.toLowerCase());
+        (consultation.subject?.toLowerCase() || "").includes(searchTermLower) ||
+        (consultation.description?.toLowerCase() || "").includes(
+          searchTermLower
+        );
 
       const matchesStatus =
         statusFilter === "all" || consultation.status === statusFilter;
 
       const matchesLawyer =
         !lawyerFilter ||
-        consultation.lawyerID.toLowerCase().includes(lawyerFilter.toLowerCase());
+        (consultation.lawyerID || "")
+          .toLowerCase()
+          .includes(lawyerFilter.toLowerCase());
 
       return matchesSearch && matchesStatus && matchesLawyer;
     });
@@ -67,15 +79,13 @@ const Consultations = () => {
 
   const getStatusColor = (status: ConsultationStatus) => {
     switch (status) {
-      case ConsultationStatus.COMPLETED:
+      case "COMPLETED":
         return "bg-green-500";
-      case ConsultationStatus.ONGOING:
+      case "ACCEPTED":
         return "bg-blue-500";
-      case ConsultationStatus.ACCEPTED:
+      case "PENDING":
         return "bg-yellow-500";
-      case ConsultationStatus.PENDING:
-        return "bg-gray-500";
-      case ConsultationStatus.REJECTED:
+      case "REJECTED":
         return "bg-red-500";
       default:
         return "bg-gray-500";
@@ -84,18 +94,25 @@ const Consultations = () => {
 
   const getStatusText = (status: ConsultationStatus) => {
     switch (status) {
-      case ConsultationStatus.COMPLETED:
+      case "COMPLETED":
         return "Completed";
-      case ConsultationStatus.ONGOING:
-        return "Ongoing";
-      case ConsultationStatus.ACCEPTED:
+      case "ACCEPTED":
         return "Accepted";
-      case ConsultationStatus.PENDING:
+      case "PENDING":
         return "Pending";
-      case ConsultationStatus.REJECTED:
+      case "REJECTED":
         return "Rejected";
       default:
         return "Unknown";
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    try {
+      return format(new Date(timestamp), "PPP");
+    } catch (error) {
+      console.error("Invalid date:", timestamp);
+      return "Invalid date";
     }
   };
 
@@ -169,18 +186,19 @@ const Consultations = () => {
           </div>
           <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as ConsultationStatus | "all")}
+            onValueChange={(value) =>
+              setStatusFilter(value as ConsultationStatus | "all")
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value={ConsultationStatus.PENDING}>Pending</SelectItem>
-              <SelectItem value={ConsultationStatus.ACCEPTED}>Accepted</SelectItem>
-              <SelectItem value={ConsultationStatus.ONGOING}>Ongoing</SelectItem>
-              <SelectItem value={ConsultationStatus.COMPLETED}>Completed</SelectItem>
-              <SelectItem value={ConsultationStatus.REJECTED}>Rejected</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="ACCEPTED">Accepted</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
             </SelectContent>
           </Select>
           <Input
@@ -192,7 +210,8 @@ const Consultations = () => {
 
         {/* Results Count */}
         <div className="text-sm text-muted-foreground">
-          Showing {filteredConsultations.length} of {consultations.length} consultations
+          Showing {filteredConsultations.length} of {consultations.length}{" "}
+          consultations
         </div>
 
         {/* Consultations List */}
@@ -211,14 +230,19 @@ const Consultations = () => {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredConsultations.map((consultation) => (
-              <Card key={consultation.id} className="hover:shadow-lg transition-shadow">
+              <Card
+                key={consultation.id}
+                className="hover:shadow-lg transition-shadow"
+              >
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="line-clamp-1">{consultation.subject}</CardTitle>
+                      <CardTitle className="line-clamp-1">
+                        {consultation.subject || "No Subject"}
+                      </CardTitle>
                       <CardDescription className="flex items-center gap-2 mt-2">
                         <Calendar className="h-4 w-4" />
-                        {format(new Date(consultation.createdAt), "PPP")}
+                        {formatDate(consultation.createdAt)}
                       </CardDescription>
                     </div>
                     <Badge className={getStatusColor(consultation.status)}>
@@ -230,15 +254,27 @@ const Consultations = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="h-4 w-4" />
-                      <span className="truncate">Lawyer ID: {consultation.lawyerID}</span>
+                      <span className="">
+                        Lawyer:{" "}
+                        <a
+                          href={`${API_BASE_URL}/lawyers/${consultation.lawyerID}`}
+                          className="text-blue-500 hover:underline"
+                        >
+                          View lawyer profile
+                        </a>
+                      </span>
                     </div>
-                    <p className="text-sm line-clamp-3">{consultation.description}</p>
+                    <p className="text-sm line-clamp-3">
+                      {consultation.description || "No description available"}
+                    </p>
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button
                     className="w-full"
-                    onClick={() => navigate(`/consultations/${consultation.id}`)}
+                    onClick={() =>
+                      navigate(`/consultations/${consultation.id}`)
+                    }
                   >
                     View Consultation
                   </Button>

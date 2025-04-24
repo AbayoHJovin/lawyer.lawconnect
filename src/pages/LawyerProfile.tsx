@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthCheck } from "@/lib/auth";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store";
 import {
   getLawyerById,
   getLawyerRatings,
@@ -34,14 +32,15 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useAppSelector } from "@/store";
 import BookConsultationModal from "@/components/BookConsultationModal";
 
 const LawyerProfile = () => {
   const { lawyerId } = useParams<{ lawyerId: string }>();
   const navigate = useNavigate();
   const { checkAuth } = useAuthCheck();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   const {
     data: lawyerResponse,
@@ -67,14 +66,11 @@ const LawyerProfile = () => {
   const ratings = ratingsResponse?.data || [];
 
   const handleBookConsultation = () => {
-    if (!user) {
-      checkAuth(() => {
-        // This will redirect to login if not authenticated
-        navigate("/login");
-      });
+    if (!isAuthenticated) {
+      navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
-    setIsBookingModalOpen(true);
+    setIsModalOpen(true);
   };
 
   if (isLoadingLawyer) {
@@ -204,9 +200,9 @@ const LawyerProfile = () => {
             </CardContent>
             <div className="px-6 pb-6">
               <Button
-                onClick={handleBookConsultation}
                 className="w-full"
                 disabled={!lawyer.availableForWork}
+                onClick={handleBookConsultation}
               >
                 {lawyer.availableForWork
                   ? "Book Consultation"
@@ -285,13 +281,14 @@ const LawyerProfile = () => {
         </div>
       </div>
       <Footer />
-
       {lawyer && (
         <BookConsultationModal
-          lawyerId={lawyer.id}
-          lawyerName={lawyer.fullName}
-          isOpen={isBookingModalOpen}
-          onClose={() => setIsBookingModalOpen(false)}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          lawyer={{
+            id: lawyer.id,
+            fullName: lawyer.fullName,
+          }}
         />
       )}
     </div>
