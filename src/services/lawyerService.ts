@@ -103,3 +103,12 @@ export const getLawyerRatings = async (
   );
   return response.data;
 };
+
+export const getLawyerPhoneNumber = async (
+  lawyerId: string
+): Promise<string> => {
+  const response = await API.get<ApiResponse<string>>(
+    `/lawyers/find-lawyer-phone-by-lawyerId/${lawyerId}`
+  );
+  return response.data.data;
+};

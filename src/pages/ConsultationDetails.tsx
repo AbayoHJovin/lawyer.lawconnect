@@ -1,9 +1,11 @@
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getConsultationById,
+  deleteConsultation,
   type ConsultationStatus,
 } from "@/services/consultationService";
+import { getLawyerPhoneNumber } from "@/services/lawyerService";
 import Layout from "@/components/Layout";
 import {
   Card,
@@ -15,17 +17,40 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Calendar, User } from "lucide-react";
+import {
+  AlertCircle,
+  Calendar,
+  User,
+  MessageSquare,
+  Trash2,
+} from "lucide-react";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/config";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 const ConsultationDetails = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const {
     data: consultationResponse,
-    isLoading,
-    error,
+    isLoading: isLoadingConsultation,
+    error: consultationError,
   } = useQuery({
     queryKey: ["consultation", consultationId],
     queryFn: () => getConsultationById(consultationId!),
@@ -33,6 +58,48 @@ const ConsultationDetails = () => {
   });
 
   const consultation = consultationResponse?.data;
+
+  const { mutate: handleDelete, isPending: isDeleting } = useMutation({
+    mutationFn: deleteConsultation,
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Consultation deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["consultations"] });
+      navigate("/consultations");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to delete consultation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onDeleteConfirm = () => {
+    if (consultationId) {
+      handleDelete(consultationId);
+    }
+    setShowDeleteDialog(false);
+  };
+
+  const canShowWhatsApp =
+    consultation?.status === "COMPLETED" ||
+    consultation?.status === "ACCEPTED" ||
+    consultation?.status === "ONGOING";
+
+  const {
+    data: lawyerPhone,
+    isLoading: isLoadingPhone,
+    error: phoneError,
+  } = useQuery({
+    queryKey: ["lawyerPhone", consultation?.lawyerID],
+    queryFn: () => getLawyerPhoneNumber(consultation!.lawyerID),
+    enabled: !!consultation?.lawyerID && canShowWhatsApp,
+  });
 
   const getStatusColor = (status: ConsultationStatus) => {
     switch (status) {
@@ -44,6 +111,8 @@ const ConsultationDetails = () => {
         return "bg-yellow-500";
       case "REJECTED":
         return "bg-red-500";
+      case "ONGOING":
+        return "bg-purple-500";
       default:
         return "bg-gray-500";
     }
@@ -59,6 +128,8 @@ const ConsultationDetails = () => {
         return "Pending";
       case "REJECTED":
         return "Rejected";
+      case "ONGOING":
+        return "Ongoing";
       default:
         return "Unknown";
     }
@@ -73,7 +144,7 @@ const ConsultationDetails = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoadingConsultation) {
     return (
       <Layout>
         <div className="space-y-6">
@@ -103,7 +174,7 @@ const ConsultationDetails = () => {
     );
   }
 
-  if (error) {
+  if (consultationError) {
     return (
       <Layout>
         <div className="space-y-6">
@@ -150,13 +221,24 @@ const ConsultationDetails = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Consultation Details
-          </h1>
-          <p className="text-muted-foreground">
-            Viewing consultation from {formatDate(consultation.createdAt)}
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Consultation Details
+            </h1>
+            <p className="text-muted-foreground">
+              Viewing consultation from {formatDate(consultation.createdAt)}
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={isDeleting}
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isDeleting ? "Deleting..." : "Delete Consultation"}
+          </Button>
         </div>
 
         <Card>
@@ -182,17 +264,53 @@ const ConsultationDetails = () => {
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-medium mb-2">Lawyer Information</h3>
-              <p className="text-sm text-muted-foreground">
-                Lawyer ID:Lawyer:{" "}
-                        <a
-                          href={`${API_BASE_URL}/lawyers/${consultation.lawyerID}`}
-                          target="_blank"
-                          className="text-blue-500 hover:underline"
+              <h3 className="text-sm font-medium mb-2">
+                Appointed Lawyer Information
+              </h3>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Lawyer:{" "}
+                  <a
+                    href={`${API_BASE_URL}/lawyers/${consultation.lawyerID}`}
+                    className="text-blue-500 hover:underline"
+                  >
+                    View lawyer profile
+                  </a>
+                </p>
+                {canShowWhatsApp && (
+                  <div className="mt-4">
+                    {isLoadingPhone ? (
+                      <Skeleton className="h-10 w-40" />
+                    ) : phoneError ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>
+                          Failed to load lawyer's contact information.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      lawyerPhone && (
+                        <Button
+                          className="gap-2"
+                          onClick={() =>
+                            window.open(
+                              `https://wa.me/${lawyerPhone.replace(
+                                /[^0-9]/g,
+                                ""
+                              )}`,
+                              "_blank"
+                            )
+                          }
                         >
-                          View lawyer profile
-                        </a>
-              </p>
+                          <MessageSquare className="h-4 w-4" />
+                          Chat on WhatsApp
+                        </Button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <h3 className="text-sm font-medium mb-2">Status History</h3>
@@ -202,6 +320,27 @@ const ConsultationDetails = () => {
             </div>
           </CardContent>
         </Card>
+
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your
+                consultation and remove it from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={onDeleteConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

@@ -10,7 +10,8 @@ export type ConsultationStatus =
   | "PENDING"
   | "ACCEPTED"
   | "REJECTED"
-  | "COMPLETED";
+  | "COMPLETED"
+  | "ONGOING";
 
 export interface ConsultationDto {
   id: string; // UUID
@@ -59,4 +60,13 @@ export const getConsultationStats = (consultations: ConsultationDto[]) => {
     completed: consultations.filter((c) => c.status === "COMPLETED").length,
     total: consultations.length,
   };
+};
+
+export const deleteConsultation = async (
+  consultationId: string
+): Promise<ApiResponse<void>> => {
+  const response = await API.delete<ApiResponse<void>>(
+    `/consultations/lawy-cit/delete/${consultationId}`
+  );
+  return response.data;
 };
