@@ -182,6 +182,14 @@ const LawyerProfile = () => {
                 <FileText className="h-4 w-4" />
                 <span className="text-sm">License: {lawyer.licenseNumber}</span>
               </div>
+              {lawyer.lawyerBio && (
+                <div className="space-y-2">
+                  <h3 className="font-medium">About</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {lawyer.lawyerBio}
+                  </p>
+                </div>
+              )}
               {lawyer.specializations && lawyer.specializations.length > 0 ? (
                 <div className="space-y-2">
                   <h3 className="font-medium">Specializations:</h3>
