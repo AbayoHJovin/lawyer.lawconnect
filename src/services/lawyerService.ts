@@ -17,6 +17,7 @@ export interface LawyerDto {
   availableForWork: boolean;
   specializations: SpecializationDto[];
   averageRating: number;
+  lawyerBio: string | null;
 }
 
 export interface RatingDto {
