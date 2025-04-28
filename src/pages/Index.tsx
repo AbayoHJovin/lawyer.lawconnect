@@ -10,13 +10,11 @@ const Index = () => {
       {/* Navigation */}
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
-          <div className="text-xl font-bold text-primary">
-            Citizen Law Connect
-          </div>
+          <div className="text-xl font-bold text-primary">LawConnect Pro</div>
           <div className="flex items-center gap-4">
             <Link to="/lawyers">
               <Button variant="outline" className="font-semibold">
-                Discover Lawyers
+                Browse Network
               </Button>
             </Link>
             {isAuthenticated ? (
@@ -29,7 +27,7 @@ const Index = () => {
                   <Button variant="ghost">Sign In</Button>
                 </Link>
                 <Link to="/register">
-                  <Button>Register</Button>
+                  <Button>Join as Lawyer</Button>
                 </Link>
               </>
             )}
@@ -42,16 +40,16 @@ const Index = () => {
         <div className="container px-4 md:px-6 flex flex-col md:flex-row gap-8 items-center">
           <div className="flex flex-col space-y-4 md:w-1/2">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tighter font-playfair">
-              Connect with Legal Experts
+              Grow Your Legal Practice
             </h1>
             <p className="text-lg text-muted-foreground max-w-[600px]">
-              Get professional legal advice, manage consultations, and stay
-              updated on your cases all in one place.
+              Connect with clients, manage consultations, and expand your legal
+              practice with our professional platform.
             </p>
             <div className="flex gap-4 mt-4">
               <Link to="/lawyers">
                 <Button className="font-semibold" size="lg" variant="outline">
-                  Discover Lawyers
+                  Explore Network
                 </Button>
               </Link>
               {isAuthenticated ? (
@@ -61,7 +59,7 @@ const Index = () => {
               ) : (
                 <>
                   <Link to="/register">
-                    <Button size="lg">Get Started</Button>
+                    <Button size="lg">Join Now</Button>
                   </Link>
                   <Link to="/login">
                     <Button variant="outline" size="lg">
@@ -89,16 +87,16 @@ const Index = () => {
                     strokeLinejoin="round"
                     className="text-primary"
                   >
-                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                    <line x1="6" y1="1" x2="6" y2="4"></line>
-                    <line x1="10" y1="1" x2="10" y2="4"></line>
-                    <line x1="14" y1="1" x2="14" y2="4"></line>
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold">Legal Services Platform</h3>
+                <h3 className="text-2xl font-bold">
+                  Professional Legal Platform
+                </h3>
                 <p className="text-muted-foreground mt-2">
-                  Connecting citizens with qualified lawyers for legal support
+                  Empowering lawyers to build and manage their practice
                 </p>
               </div>
             </div>
@@ -110,9 +108,9 @@ const Index = () => {
       <section className="bg-muted py-12 font-playfair">
         <div className="container px-4 md:px-6">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold">How It Works</h2>
+            <h2 className="text-3xl font-bold">Why Join LawConnect Pro?</h2>
             <p className="text-muted-foreground mt-2">
-              Get legal help in three simple steps
+              Benefits for legal professionals
             </p>
           </div>
 
@@ -121,9 +119,10 @@ const Index = () => {
               <div className="mb-4 bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full">
                 <span className="font-bold text-primary text-xl">1</span>
               </div>
-              <h3 className="font-bold text-xl mb-2">Create Account</h3>
+              <h3 className="font-bold text-xl mb-2">Client Acquisition</h3>
               <p className="text-muted-foreground">
-                Register as a citizen to access legal services and consultations
+                Connect with potential clients and grow your practice through
+                our verified network
               </p>
             </div>
 
@@ -131,9 +130,10 @@ const Index = () => {
               <div className="mb-4 bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full">
                 <span className="font-bold text-primary text-xl">2</span>
               </div>
-              <h3 className="font-bold text-xl mb-2">Book Consultations</h3>
+              <h3 className="font-bold text-xl mb-2">Practice Management</h3>
               <p className="text-muted-foreground">
-                Connect with qualified lawyers for professional legal advice
+                Streamline your consultations, case management, and client
+                communications
               </p>
             </div>
 
@@ -141,10 +141,10 @@ const Index = () => {
               <div className="mb-4 bg-primary/10 w-12 h-12 flex items-center justify-center rounded-full">
                 <span className="font-bold text-primary text-xl">3</span>
               </div>
-              <h3 className="font-bold text-xl mb-2">Manage Your Cases</h3>
+              <h3 className="font-bold text-xl mb-2">Professional Growth</h3>
               <p className="text-muted-foreground">
-                Track progress, provide ratings, and stay updated on your legal
-                matters
+                Build your reputation, receive client feedback, and showcase
+                your expertise
               </p>
             </div>
           </div>
@@ -157,7 +157,7 @@ const Index = () => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <p className="text-sm text-muted-foreground">
-                © {new Date().getFullYear()} Citizen Law Connect. All rights
+                © {new Date().getFullYear()} LawConnect Pro. All rights
                 reserved.
               </p>
             </div>
@@ -166,7 +166,7 @@ const Index = () => {
                 to="/lawyers"
                 className="text-sm text-muted-foreground hover:text-foreground font-semibold"
               >
-                Discover Lawyers
+                Browse Network
               </Link>
               <Link
                 to="/login"
@@ -178,7 +178,7 @@ const Index = () => {
                 to="/register"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Register
+                Join as Lawyer
               </Link>
             </div>
           </div>

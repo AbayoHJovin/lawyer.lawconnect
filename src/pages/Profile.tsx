@@ -3,10 +3,13 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  updateCitizen,
-  getCitizenProfile,
-  CitizenProfile,
-} from "@/services/citizenService";
+  getCurrentLawyer,
+  updateLawyer,
+  getAllSpecializations,
+  LawyerDto,
+  UpdateLawyerRequest,
+  SpecializationDto,
+} from "@/services/lawyerService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,80 +27,95 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Copy } from "lucide-react";
 import Layout from "@/components/Layout";
-import { fetchCurrentUser } from "@/store/slices/authSlice";
-
-type UpdateProfileData = Pick<
-  CitizenProfile,
-  "fullName" | "phoneNumber" | "languagePreference" | "location"
->;
+import { fetchCurrentLawyer } from "@/store/slices/authSlice";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 export default function Profile() {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
 
-  useEffect(() => {
-    dispatch(fetchCurrentUser());
-  }, [dispatch]);
-
-  const [formData, setFormData] = useState<CitizenProfile>({
-    id: user?.id || "",
-    fullName: user?.fullName || "",
-    email: user?.email || "",
-    phoneNumber: user?.phoneNumber || "",
-    languagePreference: user?.languagePreference || "",
-    location: user?.location || "",
+  // Fetch current lawyer and all specializations
+  const {
+    data: lawyer,
+    isLoading: isLoadingLawyer,
+    refetch,
+  } = useQuery({
+    queryKey: ["currentLawyerProfile"],
+    queryFn: getCurrentLawyer,
+    refetchOnWindowFocus: false,
   });
-
-  // Update formData when user changes
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        languagePreference: user.languagePreference,
-        location: user.location,
-      });
+  const { data: allSpecializations = [], isLoading: isLoadingSpecs } = useQuery(
+    {
+      queryKey: ["allSpecializations"],
+      queryFn: getAllSpecializations,
+      refetchOnWindowFocus: false,
     }
-  }, [user]);
+  );
 
-  const [originalData, setOriginalData] = useState<CitizenProfile | null>(null);
+  // Form state
+  const [formData, setFormData] = useState<LawyerDto | null>(null);
+  const [originalData, setOriginalData] = useState<LawyerDto | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Fetch user profile
-  const { data: profile, isLoading: isLoadingProfile } = useQuery({
-    queryKey: ["citizenProfile"],
-    queryFn: getCitizenProfile,
-  });
+  useEffect(() => {
+    if (lawyer) {
+      setFormData(lawyer);
+      setOriginalData(lawyer);
+    }
+  }, [lawyer]);
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: updateCitizen,
+    mutationFn: (data: UpdateLawyerRequest) => updateLawyer(data),
     onSuccess: (data) => {
       toast.success("Profile updated successfully");
       setIsEditing(false);
       setOriginalData(data);
       setFormData(data);
+      refetch();
+      dispatch(fetchCurrentLawyer());
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update profile");
     },
   });
 
-  useEffect(() => {
-    if (profile) {
-      setFormData(profile);
-      setOriginalData(profile);
-    }
-  }, [profile]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => (prev ? { ...prev, [name]: value } : prev));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => (prev ? { ...prev, [name]: value } : prev));
+  };
+
+  const handleSpecializationChange = (spec: SpecializationDto) => {
+    setFormData((prev) => {
+      if (!prev) return prev;
+      const exists = prev.specializations.some(
+        (s) => s.specializationId === spec.specializationId
+      );
+      let updatedSpecs;
+      if (exists) {
+        updatedSpecs = prev.specializations.filter(
+          (s) => s.specializationId !== spec.specializationId
+        );
+      } else {
+        updatedSpecs = [...prev.specializations, spec];
+      }
+      return { ...prev, specializations: updatedSpecs };
+    });
   };
 
   const handleCopy = (text: string, fieldName: string) => {
@@ -107,26 +125,52 @@ export default function Profile() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Only include changed fields in the update request
-    const changes: UpdateProfileData = {
-      fullName: formData.fullName,
-      phoneNumber: formData.phoneNumber,
-      languagePreference: formData.languagePreference,
-      location: formData.location,
-    };
-
-    // Don't send request if no changes
+    if (!formData || !originalData) return;
+    // Only include changed fields
+    const changes: UpdateLawyerRequest = {};
+    if (formData.fullName !== originalData.fullName)
+      changes.fullName = formData.fullName;
+    if (formData.phoneNumber !== originalData.phoneNumber)
+      changes.phoneNumber = formData.phoneNumber || undefined;
+    if (formData.languagePreference !== originalData.languagePreference)
+      changes.languagePreference = formData.languagePreference;
+    if (formData.licenseNumber !== originalData.licenseNumber)
+      changes.licenseNumber = formData.licenseNumber;
+    if (formData.yearsOfExperience !== originalData.yearsOfExperience)
+      changes.yearsOfExperience = formData.yearsOfExperience;
+    if (formData.location !== originalData.location)
+      changes.location = formData.location;
+    if (formData.lawyerBio !== originalData.lawyerBio)
+      changes.lawyerBio = formData.lawyerBio || undefined;
+    // Specializations
+    const origSpecIds = new Set(
+      originalData.specializations.map((s) => s.specializationId)
+    );
+    const formSpecIds = new Set(
+      formData.specializations.map((s) => s.specializationId)
+    );
+    if (
+      formData.specializations.length !== originalData.specializations.length ||
+      formData.specializations.some(
+        (s) => !origSpecIds.has(s.specializationId)
+      ) ||
+      originalData.specializations.some(
+        (s) => !formSpecIds.has(s.specializationId)
+      )
+    ) {
+      changes.specialization = formData.specializations.map((s) => ({
+        specializationName: s.specializationName,
+      }));
+    }
     if (Object.keys(changes).length === 0) {
       toast.info("No changes to update");
       setIsEditing(false);
       return;
     }
-
     updateMutation.mutate(changes);
   };
 
-  if (isLoadingProfile) {
+  if (isLoadingLawyer || !formData) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-screen">
@@ -190,7 +234,6 @@ export default function Profile() {
                     </Button>
                   </div>
                 </div>
-
                 {/* Editable fields */}
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
@@ -208,7 +251,7 @@ export default function Profile() {
                   <Input
                     id="phoneNumber"
                     name="phoneNumber"
-                    value={formData.phoneNumber}
+                    value={formData.phoneNumber || ""}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     className="w-full"
@@ -221,10 +264,7 @@ export default function Profile() {
                   <Select
                     value={formData.languagePreference}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        languagePreference: value,
-                      }))
+                      handleSelectChange("languagePreference", value)
                     }
                     disabled={!isEditing}
                   >
@@ -238,6 +278,29 @@ export default function Profile() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="licenseNumber">License Number</Label>
+                  <Input
+                    id="licenseNumber"
+                    name="licenseNumber"
+                    value={formData.licenseNumber}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="yearsOfExperience">Years of Experience</Label>
+                  <Input
+                    id="yearsOfExperience"
+                    name="yearsOfExperience"
+                    type="number"
+                    value={formData.yearsOfExperience}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <Input
                     id="location"
@@ -248,8 +311,85 @@ export default function Profile() {
                     className="w-full"
                   />
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="lawyerBio">Bio</Label>
+                  <Textarea
+                    id="lawyerBio"
+                    name="lawyerBio"
+                    value={formData.lawyerBio || ""}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Specializations</Label>
+                  {/* Responsive display of selected specializations as badges */}
+                  {!isEditing && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.specializations.length > 0 ? (
+                        formData.specializations.map((s) => (
+                          <Badge key={s.specializationId} variant="outline">
+                            {s.specializationName}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">
+                          No specializations selected
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {/* Popover for editing specializations */}
+                  {isEditing && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.specializations.length > 0 ? (
+                        formData.specializations.map((s) => (
+                          <Badge key={s.specializationId} variant="outline">
+                            {s.specializationName}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">
+                          No specializations selected
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {isEditing && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button type="button" variant="outline">
+                          Select Specializations
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 max-h-64 overflow-y-auto">
+                        {allSpecializations.map((spec) => (
+                          <div
+                            key={spec.specializationId}
+                            className="flex items-center gap-2 py-1"
+                          >
+                            <Checkbox
+                              id={`spec-${spec.specializationId}`}
+                              checked={formData.specializations.some(
+                                (s) =>
+                                  s.specializationId === spec.specializationId
+                              )}
+                              onCheckedChange={() =>
+                                handleSpecializationChange(spec)
+                              }
+                              disabled={!isEditing}
+                            />
+                            <Label htmlFor={`spec-${spec.specializationId}`}>
+                              {spec.specializationName}
+                            </Label>
+                          </div>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
               </div>
-
               <div className="flex justify-end space-x-4">
                 {!isEditing ? (
                   <Button
@@ -265,7 +405,7 @@ export default function Profile() {
                       type="button"
                       onClick={() => {
                         setIsEditing(false);
-                        setFormData(originalData || formData);
+                        setFormData(originalData);
                       }}
                       variant="outline"
                     >

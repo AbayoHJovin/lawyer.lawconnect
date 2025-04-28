@@ -1,6 +1,4 @@
 import API from "@/lib/axios";
-import { getAccessToken } from "@/services/authService";
-
 export interface RatingDto {
   ratingId: string; // UUID
   citizenName: string;
@@ -27,18 +25,10 @@ export const getLawyerRatings = async (lawyerId: string) => {
 };
 
 export const rateLawyer = async (request: AddRatingRequest) => {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error("Authentication required");
-  }
-
-  const response = await API.post<ApiResponse<void>>(
+const response = await API.post<ApiResponse<void>>(
     "/citizens/cit/rate-lawyer",
     request,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       withCredentials: true,
     }
   );

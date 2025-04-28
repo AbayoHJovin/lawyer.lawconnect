@@ -14,6 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { isPublicRoute } from "@/utils/routeUtils";
+import API from "@/lib/axios";
 
 // Pages
 import Index from "@/pages/Index";
@@ -42,12 +43,20 @@ function AppRoutes() {
   const location = useLocation();
 
   useEffect(() => {
-    // Only check auth on protected routes when we have a token
-    if (
-      !isPublicRoute(location.pathname) &&
-      localStorage.getItem("accessToken")
-    ) {
-      dispatch(checkAuth());
+    const checkAuthentication = async () => {
+      try {
+        const response = await API.get("/auth/protected");
+        if (response.status === 200) {
+          dispatch({ type: "auth/setAuthenticated", payload: true });
+        }
+      } catch (error) {
+        dispatch({ type: "auth/setAuthenticated", payload: false });
+      }
+    };
+
+    // Only check auth on protected routes
+    if (!isPublicRoute(location.pathname)) {
+      checkAuthentication();
     }
   }, [dispatch, location.pathname]);
 
@@ -55,12 +64,7 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Index />} />
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
-        }
-      />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/lawyers" element={<Lawyers />} />
       <Route path="/lawyers/:lawyerId" element={<LawyerProfile />} />

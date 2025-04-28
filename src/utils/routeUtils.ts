@@ -3,8 +3,8 @@ export const PUBLIC_ROUTES = [
   "/",
   "/login",
   "/register",
-  "/lawyers",
-  "/lawyers/:lawyerId", // Individual lawyer profiles are public
+  "/citizens",
+  "/citizenId/:citizenId", // Individual lawyer profiles are public
 ];
 
 // Check if a given path matches any public route pattern
@@ -25,6 +25,7 @@ export const PROTECTED_ROUTES = [
   "/consultations",
   "/consultations/:consultationId",
   "/profile",
+  "/myrating"
 ];
 
 // Check if a given path matches any protected route pattern

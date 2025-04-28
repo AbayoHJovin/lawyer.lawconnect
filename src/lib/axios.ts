@@ -1,23 +1,13 @@
 import axios from "axios";
-import { refreshAccessToken, getAccessToken } from "@/services/authService";
-
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
-  withCredentials: true,
+  baseURL: "http://localhost:5000/api/v1",
+  withCredentials: true, // Always send cookies for authentication
 });
 
-// Add a request interceptor
+// Clean request interceptor: no manual Authorization header
 API.interceptors.request.use(
-  (config) => {
-    const token = getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (config) => config,
+  (error) => Promise.reject(error)
 );
 
 // Add a response interceptor
@@ -26,21 +16,10 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If the error is 401 and we haven't tried to refresh the token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const { data } = await refreshAccessToken();
-        // Update the Authorization header
-        originalRequest.headers.Authorization = `Bearer ${data}`;
-        // Retry the original request
-        return API(originalRequest);
-      } catch (refreshError) {
-        // If refresh token fails, redirect to login
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
-      }
+    // If the error is 401, redirect to login
+    if (error.response?.status === 401) {
+      window.location.href = "/login";
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);

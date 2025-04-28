@@ -1,4 +1,5 @@
 import API from "../lib/axios";
+import { AxiosError } from "axios";
 
 export interface SpecializationDto {
   specializationId: string;
@@ -110,6 +111,106 @@ export const getLawyerPhoneNumber = async (
 ): Promise<string> => {
   const response = await API.get<ApiResponse<string>>(
     `/lawyers/find-lawyer-phone-by-lawyerId/${lawyerId}`
+  );
+  return response.data.data;
+};
+
+export interface LawyerLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  lawyer: LawyerDto;
+}
+
+export interface LawyerAuthError {
+  message: string;
+  code: string;
+}
+
+export const lawyerLoginByEmail = async (
+  email: string,
+  password: string
+): Promise<LawyerLoginResponse> => {
+  try {
+    const response = await API.post<LawyerLoginResponse>(
+      "/lawyers/login-by-email",
+      { email, password },
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      const errorMessage = error.response?.data?.message || "Login failed";
+      const errorCode = error.response?.data?.code || "AUTH_ERROR";
+      throw {
+        message: errorMessage,
+        code: errorCode,
+      } as LawyerAuthError;
+    }
+    throw {
+      message: "An unexpected error occurred",
+      code: "UNKNOWN_ERROR",
+    } as LawyerAuthError;
+  }
+};
+
+export const lawyerLoginByPhone = async (
+  phone: string,
+  password: string
+): Promise<LawyerLoginResponse> => {
+  try {
+    const response = await API.post<LawyerLoginResponse>(
+      "/lawyers/login-by-phone",
+      { phone, password },
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      const errorMessage = error.response?.data?.message || "Login failed";
+      const errorCode = error.response?.data?.code || "AUTH_ERROR";
+      throw {
+        message: errorMessage,
+        code: errorCode,
+      } as LawyerAuthError;
+    }
+    throw {
+      message: "An unexpected error occurred",
+      code: "UNKNOWN_ERROR",
+    } as LawyerAuthError;
+  }
+};
+
+export const getCurrentLawyer = async (): Promise<LawyerDto> => {
+  const response = await API.get<ApiResponse<LawyerDto>>(
+    "/lawyers/lawy/getCurrent"
+  );
+  return response.data.data;
+};
+
+export interface UpdateLawyerRequest {
+  fullName?: string;
+  phoneNumber?: string;
+  languagePreference?: string;
+  licenseNumber?: string;
+  yearsOfExperience?: number;
+  location?: string;
+  specialization?: { specializationName: string }[];
+  lawyerBio?: string;
+}
+
+export const updateLawyer = async (
+  data: UpdateLawyerRequest
+): Promise<LawyerDto> => {
+  const response = await API.patch<ApiResponse<LawyerDto>>(
+    "/lawyers/lawy/update",
+    data
+  );
+  return response.data.data;
+};
+
+export const getAllSpecializations = async (): Promise<SpecializationDto[]> => {
+  const response = await API.get<ApiListResponse<SpecializationDto>>(
+    "/specializations/all"
   );
   return response.data.data;
 };

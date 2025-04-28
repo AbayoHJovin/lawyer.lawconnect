@@ -4,11 +4,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch } from "@/store";
 import {
   clearError,
-  loginByEmailThunk,
-  loginByPhoneThunk,
+  loginLawyerByEmailThunk,
+  loginLawyerByPhoneThunk,
 } from "@/store/slices/authSlice";
 import { RootState } from "@/store";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,11 +33,8 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-
-  // Redirect if coming from a specific page
+ 
   const from = location.state?.from?.pathname || "/dashboard";
-
-  // If already authenticated, redirect
   if (isAuthenticated) {
     navigate(from, { replace: true });
   }
@@ -51,10 +47,10 @@ const Login = () => {
     }
 
     try {
-      await dispatch(loginByEmailThunk({ email, password })).unwrap();
-      navigate(from, { replace: true });
+      await dispatch(loginLawyerByEmailThunk({ email, password })).unwrap();
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("Login failed:", err);
+      // error handled by slice
     }
   };
 
@@ -66,12 +62,10 @@ const Login = () => {
     }
 
     try {
-      await dispatch(
-        loginByPhoneThunk({ phoneNumber: phone, password })
-      ).unwrap();
-      navigate(from, { replace: true });
+      await dispatch(loginLawyerByPhoneThunk({ phone, password })).unwrap();
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("Login failed:", err);
+      // error handled by slice
     }
   };
 
@@ -79,9 +73,7 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-muted/50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">
-            Citizen Law Connect
-          </h1>
+          <h1 className="text-3xl font-bold text-primary">LawConnect Pro</h1>
           <p className="text-muted-foreground mt-2">
             Connect with legal professionals
           </p>

@@ -4,11 +4,38 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAppDispatch } from "@/store";
 import { logoutThunk } from "@/store/slices/authSlice";
+import { useEffect, useState } from "react";
+import { getCurrentLawyer, LawyerDto } from "@/services/lawyerService";
+import { useQuery } from "@tanstack/react-query";
 
+// Fetch current lawyer and all specializations
+// const {
+//   data: lawyer,
+//   isLoading: isLoadingLawyer,
+//   refetch,
+// } = useQuery({
+//   queryKey: ["currentLawyerProfile"],
+//   queryFn: getCurrentLawyer,
+//   refetchOnWindowFocus: false,
+// });
 const Navbar = () => {
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const { toast } = useToast();
+  const [lawyer, setLawyer] = useState<LawyerDto | null>(null);
+
+  useEffect(() => {
+    const fetchLawyer = async () => {
+      try {
+        const lawyer = await getCurrentLawyer();
+        setLawyer(lawyer);
+        console.log("lawyer", lawyer);
+      } catch {
+        setLawyer(null);
+      }
+    };
+    fetchLawyer();
+  }, []);
+
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -42,7 +69,7 @@ const Navbar = () => {
             </Button>
           </Link>
 
-          {isAuthenticated ? (
+          {lawyer? (
             <>
               <Link to="/dashboard">
                 <Button variant="ghost">Dashboard</Button>

@@ -1,12 +1,8 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store";
-import {
-  getConsultationsForCitizen,
-  getConsultationStats,
-  type ConsultationStatus,
-} from "@/services/consultationService";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "@/store";
+import API from "@/lib/axios";
 import Layout from "@/components/Layout";
 import {
   Card,
@@ -16,32 +12,80 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, User, Calendar, Star } from "lucide-react";
+import {
+  FileText,
+  User,
+  Calendar,
+  Star,
+  Award,
+  CheckCircle,
+  Loader2,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import type { LawyerDto } from "@/services/lawyerService";
+import { fetchCurrentLawyer } from "@/store/slices/authSlice";
+import { Switch } from "@/components/ui/switch";
+
+const fetchLawyerConsultations = async (lawyerId: string) => {
+  const res = await API.get(
+    `/consultations/lawy-cit/get-by-lawyer/${lawyerId}`
+  );
+  return res.data.data;
+};
+
+const updateAvailability = async (lawyerId: string, availability: boolean) => {
+  await API.put(
+    `/lawyers/lawy/changeAvailability?availability=${availability}&lawyerId=${lawyerId}`
+  );
+  return availability;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
 
+  // Fetch current lawyer if not set
+  useEffect(() => {
+    if (!user) {
+      dispatch(fetchCurrentLawyer());
+    }
+  }, [user, dispatch]);
+
+  // Type-narrow user to LawyerDto for lawyer dashboard
+  const lawyer = user as LawyerDto | undefined;
+  const lawyerId = lawyer?.id ?? "";
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
   const {
-    data: consultationsData,
+    data: consultations,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["consultations"],
-    queryFn: getConsultationsForCitizen,
-    enabled: !!user, // Only fetch when user is authenticated
+    queryKey: ["lawyer-consultations", lawyerId],
+    queryFn: () => fetchLawyerConsultations(lawyerId),
+    enabled: !!lawyerId,
   });
+  // Lawyer summary data
+  const averageRating = lawyer?.averageRating ?? 0;
+  const numSpecializations = lawyer?.specializations?.length ?? 0;
+  const yearsOfExperience = lawyer?.yearsOfExperience ?? 0;
+  const isAvailable = lawyer?.availableForWork ? "Available" : "Not Available";
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/login");
+  const handleToggleAvailability = async () => {
+    if (!lawyerId) return;
+    setAvailabilityLoading(true);
+    try {
+      await updateAvailability(lawyerId, !lawyer?.availableForWork);
+      window.location.reload();
+    } catch (e) {
+      alert("Failed to update availability status.");
+    } finally {
+      setAvailabilityLoading(false);
     }
-  }, [user, navigate]);
-
-  const consultations = consultationsData?.data || [];
-  const stats = getConsultationStats(consultations);
+  };
 
   if (isLoading) {
     return (
@@ -103,7 +147,7 @@ const Dashboard = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user ? user.fullName : "User"}!
+            Welcome back, {lawyer ? lawyer.fullName : "Lawyer"}!
           </p>
         </div>
 
@@ -111,14 +155,16 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Pending Consultations
+                Average Rating
               </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Star className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.pending}</div>
+              <div className="text-2xl font-bold">
+                {averageRating.toFixed(2)}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Waiting for lawyer response
+                Your overall rating
               </p>
             </CardContent>
           </Card>
@@ -126,14 +172,14 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Accepted Cases
+                Specializations
               </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <Award className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.accepted}</div>
+              <div className="text-2xl font-bold">{numSpecializations}</div>
               <p className="text-xs text-muted-foreground">
-                Currently in progress
+                Areas of expertise
               </p>
             </CardContent>
           </Card>
@@ -141,27 +187,54 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Completed Cases
+                Years of Experience
               </CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.completed}</div>
+              <div className="text-2xl font-bold">{yearsOfExperience}</div>
               <p className="text-xs text-muted-foreground">
-                Successfully resolved
+                Professional experience
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Cases</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">
+                Availability
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {lawyer?.availableForWork ? (
+                  <span className="flex items-center gap-1 text-green-600 font-semibold">
+                    <CheckCircle className="h-4 w-4" /> Available
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-gray-400 font-semibold">
+                    <CheckCircle className="h-4 w-4" /> Not Available
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                All time consultations
+              <div className="flex items-center gap-4">
+                <Switch
+                  checked={!!lawyer?.availableForWork}
+                  onCheckedChange={handleToggleAvailability}
+                  disabled={availabilityLoading}
+                  id="availability-switch"
+                />
+                <label htmlFor="availability-switch" className="text-sm">
+                  {lawyer?.availableForWork
+                    ? "Toggle to set unavailable"
+                    : "Toggle to set available"}
+                </label>
+                {availabilityLoading && (
+                  <Loader2 className="animate-spin h-4 w-4 ml-2 text-blue-500" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                This controls your status for new work
               </p>
             </CardContent>
           </Card>
@@ -170,15 +243,13 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
-                Your latest consultations and updates
-              </CardDescription>
+              <CardTitle>Latest Consultations</CardTitle>
+              <CardDescription>Your most recent consultations</CardDescription>
             </CardHeader>
             <CardContent>
-              {consultations.length > 0 ? (
+              {consultations && consultations.length > 0 ? (
                 <div className="space-y-4">
-                  {consultations.slice(0, 3).map((consultation) => (
+                  {consultations.slice(0, 3).map((consultation: any) => (
                     <div
                       key={consultation.id}
                       className="flex items-center gap-4"
@@ -196,7 +267,9 @@ const Dashboard = () => {
                       />
                       <div>
                         <p className="text-sm font-medium">
-                          {consultation.subject}
+                          {consultation.subject ||
+                            consultation.title ||
+                            "Consultation"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(
@@ -224,10 +297,10 @@ const Dashboard = () => {
               <Button
                 variant="outline"
                 className="w-full justify-start bg-blue-950 text-white"
-                onClick={() => navigate("/lawyers")}
+                onClick={() => navigate("/citizens")}
               >
                 <User className="mr-2 h-4 w-4" />
-                Find a Lawyer
+                Discover Citizens
               </Button>
               <Button
                 variant="outline"
