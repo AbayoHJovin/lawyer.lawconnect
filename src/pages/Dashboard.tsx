@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "@/store";
+import { RootState, AppDispatch, useAppSelector } from "@/store";
 import API from "@/lib/axios";
 import Layout from "@/components/Layout";
 import {
@@ -46,16 +46,22 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  const lawyer = useAppSelector(
+    (state: RootState) => state.auth.user
+  ) as LawyerDto | null;
+  useEffect(() => {
+    console.log("Current lawyer", lawyer);
+  }, [lawyer]);
 
   // Fetch current lawyer if not set
-  useEffect(() => {
-    if (!user) {
-      dispatch(fetchCurrentLawyer());
-    }
-  }, [user, dispatch]);
+  // useEffect(() => {
+  //   if (!lawyer) {
+  //     dispatch(fetchCurrentLawyer());
+  //   }
+  // }, [lawyer, dispatch]);
 
   // Type-narrow user to LawyerDto for lawyer dashboard
-  const lawyer = user as LawyerDto | undefined;
+  // const lawyer = user as LawyerDto | undefined;
   const lawyerId = lawyer?.id ?? "";
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
 

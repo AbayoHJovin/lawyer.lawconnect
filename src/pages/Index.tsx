@@ -1,9 +1,18 @@
 import { Link } from "react-router-dom";
-import { useAppSelector } from "@/store";
+import { RootState, useAppSelector } from "@/store";
 import { Button } from "@/components/ui/button";
+import { useSelector } from "react-redux";
+import { LawyerDto } from "@/services/lawyerService";
+import { useEffect } from "react";
 
 const Index = () => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const lawyer = useAppSelector(
+    (state: RootState) => state.auth.user
+  ) as LawyerDto | null;
+
+  useEffect(() => {
+    console.log("Current lawyer", lawyer);
+  }, [lawyer]);
 
   return (
     <div className="min-h-screen flex flex-col font-playfair">
@@ -17,7 +26,7 @@ const Index = () => {
                 Browse Network
               </Button>
             </Link>
-            {isAuthenticated ? (
+            {lawyer ? (
               <Link to="/dashboard">
                 <Button>Dashboard</Button>
               </Link>
@@ -52,7 +61,7 @@ const Index = () => {
                   Explore Network
                 </Button>
               </Link>
-              {isAuthenticated ? (
+              {lawyer ? (
                 <Link to="/dashboard">
                   <Button size="lg">Go to Dashboard</Button>
                 </Link>

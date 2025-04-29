@@ -18,7 +18,7 @@ API.interceptors.response.use(
 
     // If the error is 401, redirect to login
     if (error.response?.status === 401) {
-      window.location.href = "/login";
+        window.location.href = "/login";
       return Promise.reject(error);
     }
 

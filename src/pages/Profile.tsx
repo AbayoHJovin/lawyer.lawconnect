@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  getCurrentLawyer,
   updateLawyer,
   getAllSpecializations,
   LawyerDto,
@@ -42,36 +41,20 @@ import { Badge } from "@/components/ui/badge";
 
 export default function Profile() {
   const dispatch = useDispatch<AppDispatch>();
-
-  // Fetch current lawyer and all specializations
-  const {
-    data: lawyer,
-    isLoading: isLoadingLawyer,
-    refetch,
-  } = useQuery({
-    queryKey: ["currentLawyerProfile"],
-    queryFn: getCurrentLawyer,
-    refetchOnWindowFocus: false,
-  });
-  const { data: allSpecializations = [], isLoading: isLoadingSpecs } = useQuery(
-    {
-      queryKey: ["allSpecializations"],
-      queryFn: getAllSpecializations,
-      refetchOnWindowFocus: false,
-    }
-  );
-
   // Form state
   const [formData, setFormData] = useState<LawyerDto | null>(null);
   const [originalData, setOriginalData] = useState<LawyerDto | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const user = useSelector(
+    (state: RootState) => state.auth.user
+  ) as LawyerDto | null;
 
   useEffect(() => {
-    if (lawyer) {
-      setFormData(lawyer);
-      setOriginalData(lawyer);
+    if (user) {
+      setFormData(user);
+      setOriginalData(user);
     }
-  }, [lawyer]);
+  }, [user]);
 
   // Update mutation
   const updateMutation = useMutation({
@@ -81,12 +64,18 @@ export default function Profile() {
       setIsEditing(false);
       setOriginalData(data);
       setFormData(data);
-      refetch();
       dispatch(fetchCurrentLawyer());
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update profile");
     },
+  });
+
+  // Fetch all specializations
+  const { data: allSpecializations = [] } = useQuery<SpecializationDto[]>({
+    queryKey: ["allSpecializations"],
+    queryFn: getAllSpecializations,
+    refetchOnWindowFocus: false,
   });
 
   const handleInputChange = (
@@ -170,7 +159,7 @@ export default function Profile() {
     updateMutation.mutate(changes);
   };
 
-  if (isLoadingLawyer || !formData) {
+  if (!formData) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-screen">

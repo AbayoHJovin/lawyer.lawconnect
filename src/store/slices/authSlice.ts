@@ -1,12 +1,15 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { loginByEmail, loginByPhone } from "@/services/authService";
 import {
+  LawyerDto,
   lawyerLoginByEmail,
   lawyerLoginByPhone,
   LawyerLoginResponse,
 } from "@/services/lawyerService";
 import API from "../../lib/axios";
 import { jwtDecode } from "jwt-decode";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "..";
 
 interface TokenResponse {
   message: string;
@@ -26,7 +29,7 @@ interface User {
   id: string;
   fullName: string;
   email: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
   languagePreference: string;
   location: string;
 }
@@ -135,18 +138,20 @@ export const checkAuth = createAsyncThunk(
 
 export const loginByEmailThunk = createAsyncThunk(
   "auth/loginByEmail",
-  async (credentials: LoginByEmailPayload, { rejectWithValue }) => {
+  async (credentials: LoginByEmailPayload, { dispatch, rejectWithValue }) => {
     try {
       const response = await loginByEmail(
         credentials.email,
         credentials.password
       );
-      // Fetch complete user data
-      const userResponse = await API.get<ApiResponse<CitizenDto>>(
+      // Fetch complete lawyer data
+      const userResponse = await API.get<{ message: string; data: any }>(
         `/lawyers/find-by-email?email=${credentials.email}`
       );
+      const lawyer = userResponse.data.data;
+      dispatch(setUser(lawyer));
       return {
-        citizen: userResponse.data.data,
+        citizen: lawyer,
       };
     } catch (error: unknown) {
       const authError = error as AuthError;
@@ -159,18 +164,20 @@ export const loginByEmailThunk = createAsyncThunk(
 
 export const loginByPhoneThunk = createAsyncThunk(
   "auth/loginByPhone",
-  async (credentials: LoginByPhonePayload, { rejectWithValue }) => {
+  async (credentials: LoginByPhonePayload, { dispatch, rejectWithValue }) => {
     try {
       const response = await loginByPhone(
         credentials.phoneNumber,
         credentials.password
       );
-      // Fetch complete user data using the email from the login response
-      const userResponse = await API.get<ApiResponse<CitizenDto>>(
+      // Fetch complete lawyer data using the email from the login response
+      const userResponse = await API.get<{ message: string; data: any }>(
         `/lawyers/find-by-email?email=${response.citizen.email}`
       );
+      const lawyer = userResponse.data.data;
+      dispatch(setUser(lawyer));
       return {
-        citizen: userResponse.data.data,
+        citizen: lawyer,
       };
     } catch (error: unknown) {
       const authError = error as AuthError;
@@ -211,23 +218,23 @@ export const changePassword = createAsyncThunk(
   }
 );
 
-export const fetchCurrentUser = createAsyncThunk(
-  "auth/fetchCurrentUser",
-  async (_, { rejectWithValue }) => {
-    try {
-      // Fetch user data from a protected endpoint or user info endpoint
-      const response = await API.get<ApiResponse<CitizenDto>>(
-        "/lawyers/lawy/getCurrent"
-      );
-      return response.data.data;
-    } catch (error: unknown) {
-      const authError = error as AuthError;
-      return rejectWithValue(
-        authError.response?.data?.message || "Failed to fetch user data"
-      );
-    }
-  }
-);
+// export const fetchCurrentUser = createAsyncThunk(
+//   "auth/fetchCurrentUser",
+//   async (_, { rejectWithValue }) => {
+//     try {
+//       // Fetch user data from a protected endpoint or user info endpoint
+//       const response = await API.get<ApiResponse<LawyerDto>>(
+//         "/lawyers/lawy/getCurrent"
+//       );
+//       return response.data.data;
+//     } catch (error: unknown) {
+//       const authError = error as AuthError;
+//       return rejectWithValue(
+//         authError.response?.data?.message || "Failed to fetch user data"
+//       );
+//     }
+//   }
+// );
 
 export const logoutThunk = createAsyncThunk(
   "auth/logout",
@@ -291,10 +298,20 @@ export const loginLawyerByPhoneThunk = createAsyncThunk(
 
 export const fetchCurrentLawyer = createAsyncThunk(
   "auth/fetchCurrentLawyer",
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+
+    // If we already have user data, no need to fetch
+    if (state.auth.user && state.auth.isAuthenticated) {
+      return state.auth.user;
+    }
+
     try {
       const response = await API.get("/lawyers/lawy/getCurrent");
-      return response.data.data;
+      if (response.status === 200 && response.data?.data) {
+        return response.data.data;
+      }
+      return rejectWithValue("Failed to fetch lawyer data");
     } catch (error: unknown) {
       const authError = error as AuthError;
       return rejectWithValue(
@@ -373,22 +390,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Fetch Current User
-      .addCase(fetchCurrentUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-      })
-      .addCase(fetchCurrentUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-        state.user = null;
-        state.isAuthenticated = false;
-      })
-      // Logout
+
       .addCase(logoutThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -445,11 +447,14 @@ const authSlice = createSlice({
       .addCase(fetchCurrentLawyer.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
       })
       .addCase(fetchCurrentLawyer.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
         state.user = null;
+        state.isAuthenticated = false;
       });
   },
 });

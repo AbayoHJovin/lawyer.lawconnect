@@ -1,43 +1,20 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useAppSelector } from "@/store";
+import { useAppSelector, useAppDispatch, RootState } from "@/store";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useAppDispatch } from "@/store";
 import { logoutThunk } from "@/store/slices/authSlice";
-import { useEffect, useState } from "react";
-import { getCurrentLawyer, LawyerDto } from "@/services/lawyerService";
-import { useQuery } from "@tanstack/react-query";
+import { useSelector } from "react-redux";
+import { LawyerDto } from "@/services/lawyerService";
+import { useEffect } from "react";
 
-// Fetch current lawyer and all specializations
-// const {
-//   data: lawyer,
-//   isLoading: isLoadingLawyer,
-//   refetch,
-// } = useQuery({
-//   queryKey: ["currentLawyerProfile"],
-//   queryFn: getCurrentLawyer,
-//   refetchOnWindowFocus: false,
-// });
 const Navbar = () => {
   const dispatch = useAppDispatch();
   const { toast } = useToast();
-  const [lawyer, setLawyer] = useState<LawyerDto | null>(null);
-
-  useEffect(() => {
-    const fetchLawyer = async () => {
-      try {
-        const lawyer = await getCurrentLawyer();
-        setLawyer(lawyer);
-        console.log("lawyer", lawyer);
-      } catch {
-        setLawyer(null);
-      }
-    };
-    fetchLawyer();
-  }, []);
+  const lawyer = useSelector(
+    (state: RootState) => state.auth.user
+  ) as LawyerDto | null;
 
   const navigate = useNavigate();
-
   const handleLogout = async () => {
     try {
       await dispatch(logoutThunk()).unwrap();
@@ -54,6 +31,9 @@ const Navbar = () => {
       });
     }
   };
+  useEffect(() => {
+    console.log("Current lawyer", lawyer);
+  }, [lawyer]);
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -69,7 +49,7 @@ const Navbar = () => {
             </Button>
           </Link>
 
-          {lawyer? (
+          {lawyer ? (
             <>
               <Link to="/dashboard">
                 <Button variant="ghost">Dashboard</Button>

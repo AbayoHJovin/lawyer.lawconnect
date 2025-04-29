@@ -8,13 +8,18 @@ import {
 } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store, AppDispatch, RootState } from "./store";
-import { checkAuth } from "./store/slices/authSlice";
+import {
+  checkAuth,
+  fetchCurrentLawyer,
+  setUser,
+} from "./store/slices/authSlice";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { isPublicRoute } from "@/utils/routeUtils";
 import API from "@/lib/axios";
+import { LawyerDto } from "@/services/lawyerService";
 
 // Pages
 import Index from "@/pages/Index";
@@ -39,8 +44,22 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, user } = useSelector(
+    (state: RootState) => state.auth
+  );
   const location = useLocation();
+
+  // const fetchCurrentLawyer = async () => {
+  //   try {
+  //     const response = await API.get("/lawy/getCurrent");
+  //     if (response.data.success) {
+  //       dispatch(setUser(response.data.data as LawyerDto));
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching current lawyer:", error);
+  //     dispatch(setUser(null));
+  //   }
+  // };
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -48,17 +67,24 @@ function AppRoutes() {
         const response = await API.get("/auth/protected");
         if (response.status === 200) {
           dispatch({ type: "auth/setAuthenticated", payload: true });
+          await fetchCurrentLawyer();
         }
       } catch (error) {
         dispatch({ type: "auth/setAuthenticated", payload: false });
+        dispatch(setUser(null));
       }
     };
 
-    // Only check auth on protected routes
     if (!isPublicRoute(location.pathname)) {
       checkAuthentication();
     }
   }, [dispatch, location.pathname]);
+
+  useEffect(() => {
+    if (isAuthenticated && !user) {
+      fetchCurrentLawyer();
+    }
+  }, [isAuthenticated, user]);
 
   return (
     <Routes>
@@ -109,16 +135,16 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
-      <Provider store={store}>
+    <Provider store={store}>
+      <Router>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <AppRoutes />
             <Toaster />
           </TooltipProvider>
         </QueryClientProvider>
-      </Provider>
-    </Router>
+      </Router>
+    </Provider>
   );
 }
 

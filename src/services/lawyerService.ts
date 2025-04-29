@@ -180,13 +180,6 @@ export const lawyerLoginByPhone = async (
   }
 };
 
-export const getCurrentLawyer = async (): Promise<LawyerDto> => {
-  const response = await API.get<ApiResponse<LawyerDto>>(
-    "/lawyers/lawy/getCurrent"
-  );
-  return response.data.data;
-};
-
 export interface UpdateLawyerRequest {
   fullName?: string;
   phoneNumber?: string;
