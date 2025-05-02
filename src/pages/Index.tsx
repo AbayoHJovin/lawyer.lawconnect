@@ -10,10 +10,6 @@ const Index = () => {
     (state: RootState) => state.auth.user
   ) as LawyerDto | null;
 
-  useEffect(() => {
-    console.log("Current lawyer", lawyer);
-  }, [lawyer]);
-
   return (
     <div className="min-h-screen flex flex-col font-playfair">
       {/* Navigation */}
@@ -21,7 +17,7 @@ const Index = () => {
         <div className="container flex h-16 items-center justify-between">
           <div className="text-xl font-bold text-primary">LawConnect Pro</div>
           <div className="flex items-center gap-4">
-            <Link to="/lawyers">
+            <Link to="/citizens">
               <Button variant="outline" className="font-semibold">
                 Browse Network
               </Button>
@@ -56,7 +52,7 @@ const Index = () => {
               practice with our professional platform.
             </p>
             <div className="flex gap-4 mt-4">
-              <Link to="/lawyers">
+              <Link to="/citizens">
                 <Button className="font-semibold" size="lg" variant="outline">
                   Explore Network
                 </Button>
@@ -172,7 +168,7 @@ const Index = () => {
             </div>
             <div className="flex gap-4">
               <Link
-                to="/lawyers"
+                to="/citizens"
                 className="text-sm text-muted-foreground hover:text-foreground font-semibold"
               >
                 Browse Network

@@ -18,10 +18,10 @@ const Footer = () => {
             <ul className="space-y-2">
               <li>
                 <Link
-                  to="/lawyers"
+                  to="/citizens"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Find Lawyers
+                  Find Citizens
                 </Link>
               </li>
               <li>

@@ -198,6 +198,9 @@ export const updateLawyer = async (
     "/lawyers/lawy/update",
     data
   );
+  if (!response.data.data) {
+    throw new Error("Failed to update lawyer profile");
+  }
   return response.data.data;
 };
 

@@ -19,12 +19,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { isPublicRoute } from "@/utils/routeUtils";
 import API from "@/lib/axios";
-import { LawyerDto } from "@/services/lawyerService";
 
 // Pages
 import Index from "@/pages/Index";
-import Lawyers from "@/pages/Lawyers";
-import LawyerProfile from "@/pages/LawyerProfile";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
@@ -32,6 +29,7 @@ import Profile from "@/pages/Profile";
 import Consultations from "@/pages/Consultations";
 import ConsultationDetails from "@/pages/ConsultationDetails";
 import NotFound from "@/pages/NotFound";
+import Citizens from "@/pages/Citizens";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,18 +46,6 @@ function AppRoutes() {
     (state: RootState) => state.auth
   );
   const location = useLocation();
-
-  // const fetchCurrentLawyer = async () => {
-  //   try {
-  //     const response = await API.get("/lawy/getCurrent");
-  //     if (response.data.success) {
-  //       dispatch(setUser(response.data.data as LawyerDto));
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching current lawyer:", error);
-  //     dispatch(setUser(null));
-  //   }
-  // };
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -92,8 +78,6 @@ function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/lawyers" element={<Lawyers />} />
-      <Route path="/lawyers/:lawyerId" element={<LawyerProfile />} />
 
       {/* Protected Routes */}
       <Route
@@ -101,6 +85,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/citizens"
+        element={
+          <ProtectedRoute>
+            <Citizens />
           </ProtectedRoute>
         }
       />

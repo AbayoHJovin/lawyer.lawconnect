@@ -5,7 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { logoutThunk } from "@/store/slices/authSlice";
 import { useSelector } from "react-redux";
 import { LawyerDto } from "@/services/lawyerService";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import LogoutConfirmModal from "./LogoutConfirmModal";
 
 const Navbar = () => {
   const dispatch = useAppDispatch();
@@ -13,8 +14,10 @@ const Navbar = () => {
   const lawyer = useSelector(
     (state: RootState) => state.auth.user
   ) as LawyerDto | null;
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const navigate = useNavigate();
+
   const handleLogout = async () => {
     try {
       await dispatch(logoutThunk()).unwrap();
@@ -31,6 +34,7 @@ const Navbar = () => {
       });
     }
   };
+
   useEffect(() => {
     console.log("Current lawyer", lawyer);
   }, [lawyer]);
@@ -39,13 +43,13 @@ const Navbar = () => {
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="text-xl font-bold text-primary">
-          Citizen Law Connect
+          LawConnect
         </Link>
 
         <div className="flex items-center gap-4">
-          <Link to="/lawyers">
+          <Link to="/citizens">
             <Button variant="outline" className="font-semibold">
-              Discover Lawyers
+              Discover Citizens
             </Button>
           </Link>
 
@@ -57,7 +61,7 @@ const Navbar = () => {
               <Link to="/profile">
                 <Button variant="ghost">Profile</Button>
               </Link>
-              <Button variant="ghost" onClick={handleLogout}>
+              <Button variant="ghost" onClick={() => setShowLogoutModal(true)}>
                 Logout
               </Button>
             </>
@@ -73,6 +77,12 @@ const Navbar = () => {
           )}
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+      />
     </nav>
   );
 };

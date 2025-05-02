@@ -5,6 +5,7 @@ import {
   lawyerLoginByEmail,
   lawyerLoginByPhone,
   LawyerLoginResponse,
+  updateLawyer,
 } from "@/services/lawyerService";
 import API from "../../lib/axios";
 import { jwtDecode } from "jwt-decode";
@@ -110,6 +111,10 @@ interface CitizenResponse {
 
 interface ApiResponse<T> {
   data: T;
+}
+
+interface UpdateLawyerRequest {
+  // Define the structure of the UpdateLawyerRequest
 }
 
 const initialState: AuthState = {
@@ -240,7 +245,8 @@ export const logoutThunk = createAsyncThunk(
   "auth/logout",
   async (_, { rejectWithValue }) => {
     try {
-      // Call your logout API here if needed
+      // The actual API call is now handled in the LogoutConfirmModal component
+      // Here we just return success to clear the state
       return null;
     } catch (error) {
       return rejectWithValue("Logout failed");
@@ -321,6 +327,38 @@ export const fetchCurrentLawyer = createAsyncThunk(
   }
 );
 
+export const updateAvailabilityThunk = createAsyncThunk(
+  "auth/updateAvailability",
+  async (
+    { lawyerId, availability }: { lawyerId: string; availability: boolean },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await API.put(
+        `/lawyers/lawy/changeAvailability?availability=${availability}&lawyerId=${lawyerId}`
+      );
+      return response.data.data; // Make sure backend returns updated LawyerDto
+    } catch (error: unknown) {
+      return rejectWithValue("Failed to update availability");
+    }
+  }
+);
+
+export const updateLawyerThunk = createAsyncThunk(
+  "auth/updateLawyer",
+  async (data: UpdateLawyerRequest, { rejectWithValue }) => {
+    try {
+      const response = await updateLawyer(data);
+      return response; // This will be the full updated LawyerDto
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      return rejectWithValue(
+        authError.response?.data?.message || "Failed to update lawyer profile"
+      );
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -329,6 +367,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.user = null;
       state.error = null;
+      // Clear any other auth-related state here
     },
     clearError: (state) => {
       state.error = null;
@@ -400,6 +439,7 @@ const authSlice = createSlice({
         state.user = null;
         state.loading = false;
         state.error = null;
+        // The redux-persist will automatically handle saving the cleared state
       })
       .addCase(logoutThunk.rejected, (state, action) => {
         state.loading = false;
@@ -455,6 +495,34 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.user = null;
         state.isAuthenticated = false;
+      })
+      // Update Availability
+      .addCase(updateAvailabilityThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateAvailabilityThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.error = null;
+      })
+      .addCase(updateAvailabilityThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update Lawyer Profile
+      .addCase(updateLawyerThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateLawyerThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.error = null;
+      })
+      .addCase(updateLawyerThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

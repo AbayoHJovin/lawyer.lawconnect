@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch } from "@/store";
+import { AppDispatch, useAppSelector } from "@/store";
 import {
   clearError,
   loginLawyerByEmailThunk,
@@ -21,23 +21,28 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LawyerDto } from "@/services/lawyerService";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, error, loading } = useSelector(
-    (state: RootState) => state.auth
-  );
-
+  const lawyer = useAppSelector(
+    (state: RootState) => state.auth.user
+  ) as LawyerDto | null;
+  const error = useAppSelector((state: RootState) => state.auth.error);
+  const loading = useAppSelector((state: RootState) => state.auth.loading);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
- 
+
   const from = location.state?.from?.pathname || "/dashboard";
-  if (isAuthenticated) {
-    navigate(from, { replace: true });
-  }
+
+  useEffect(() => {
+    if (lawyer) {
+      navigate(from, { replace: true });
+    }
+  }, [lawyer, dispatch, navigate, from]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

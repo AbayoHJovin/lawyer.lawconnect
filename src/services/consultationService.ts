@@ -38,9 +38,9 @@ export const createConsultation = async (
   return response.data;
 };
 
-export const getConsultationsForCitizen = async () => {
+export const getConsultationsForLawyer = async () => {
   const response = await API.get<ApiResponse<ConsultationDto[]>>(
-    "/consultations/lawy-cit/get-by-citizen"
+    "/consultations/lawy-cit/get-by-lawyer"
   );
   return response.data;
 };

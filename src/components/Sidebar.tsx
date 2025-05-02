@@ -15,12 +15,14 @@ import {
   Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LogoutConfirmModal from "./LogoutConfirmModal";
 
 const Sidebar = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -29,6 +31,7 @@ const Sidebar = () => {
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Profile", href: "/profile", icon: User },
+    { name: "Citizens", href: "/citizens", icon: User },
     { name: "Consultations", href: "/consultations", icon: FileText },
   ];
 
@@ -116,7 +119,7 @@ const Sidebar = () => {
           <div className="p-4 border-t border-sidebar-border">
             <Button
               variant="ghost"
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className={
                 "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent/50"
               }
@@ -134,6 +137,12 @@ const Sidebar = () => {
           onClick={() => setMobileOpen(false)}
         />
       )}
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+      />
     </>
   );
 };

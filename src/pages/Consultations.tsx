@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  getConsultationsForCitizen,
+  getConsultationsForLawyer,
   type ConsultationStatus,
   type ConsultationDto,
 } from "@/services/consultationService";
@@ -46,7 +46,7 @@ const Consultations = () => {
     error,
   } = useQuery({
     queryKey: ["consultations"],
-    queryFn: getConsultationsForCitizen,
+    queryFn: getConsultationsForLawyer,
   });
 
   const consultations = consultationsData?.data || [];

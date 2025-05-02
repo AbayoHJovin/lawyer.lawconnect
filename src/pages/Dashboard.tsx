@@ -24,41 +24,30 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import type { LawyerDto } from "@/services/lawyerService";
-import { fetchCurrentLawyer } from "@/store/slices/authSlice";
+import {
+  fetchCurrentLawyer,
+  updateAvailabilityThunk,
+} from "@/store/slices/authSlice";
 import { Switch } from "@/components/ui/switch";
 
-const fetchLawyerConsultations = async (lawyerId: string) => {
-  const res = await API.get(
-    `/consultations/lawy-cit/get-by-lawyer/${lawyerId}`
-  );
+const fetchLawyerConsultations = async () => {
+  const res = await API.get(`/consultations/lawy-cit/get-by-lawyer`);
   return res.data.data;
-};
-
-const updateAvailability = async (lawyerId: string, availability: boolean) => {
-  await API.put(
-    `/lawyers/lawy/changeAvailability?availability=${availability}&lawyerId=${lawyerId}`
-  );
-  return availability;
 };
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
   const lawyer = useAppSelector(
     (state: RootState) => state.auth.user
   ) as LawyerDto | null;
-  useEffect(() => {
-    console.log("Current lawyer", lawyer);
-  }, [lawyer]);
 
-  // Fetch current lawyer if not set
-  // useEffect(() => {
-  //   if (!lawyer) {
-  //     dispatch(fetchCurrentLawyer());
-  //   }
-  // }, [lawyer, dispatch]);
+  useEffect(() => {
+    if (!lawyer) {
+      dispatch(fetchCurrentLawyer());
+    }
+  }, [lawyer, dispatch]);
 
   // Type-narrow user to LawyerDto for lawyer dashboard
   // const lawyer = user as LawyerDto | undefined;
@@ -71,7 +60,7 @@ const Dashboard = () => {
     error,
   } = useQuery({
     queryKey: ["lawyer-consultations", lawyerId],
-    queryFn: () => fetchLawyerConsultations(lawyerId),
+    queryFn: () => fetchLawyerConsultations(),
     enabled: !!lawyerId,
   });
   // Lawyer summary data
@@ -84,8 +73,12 @@ const Dashboard = () => {
     if (!lawyerId) return;
     setAvailabilityLoading(true);
     try {
-      await updateAvailability(lawyerId, !lawyer?.availableForWork);
-      window.location.reload();
+      await dispatch(
+        updateAvailabilityThunk({
+          lawyerId,
+          availability: !lawyer?.availableForWork,
+        })
+      ).unwrap();
     } catch (e) {
       alert("Failed to update availability status.");
     } finally {
@@ -210,7 +203,22 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">
                 Availability
               </CardTitle>
-              <div className="flex items-center gap-2">
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <Switch
+                    checked={!!lawyer?.availableForWork}
+                    onCheckedChange={handleToggleAvailability}
+                    disabled={availabilityLoading}
+                    id="availability-switch"
+                  />
+                </div>
+                {availabilityLoading && (
+                  <Loader2 className="animate-spin h-4 w-4 text-blue-500" />
+                )}
+              </div>
+              <div className="flex items-center gap-2 my-3">
                 {lawyer?.availableForWork ? (
                   <span className="flex items-center gap-1 text-green-600 font-semibold">
                     <CheckCircle className="h-4 w-4" /> Available
@@ -219,24 +227,6 @@ const Dashboard = () => {
                   <span className="flex items-center gap-1 text-gray-400 font-semibold">
                     <CheckCircle className="h-4 w-4" /> Not Available
                   </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                <Switch
-                  checked={!!lawyer?.availableForWork}
-                  onCheckedChange={handleToggleAvailability}
-                  disabled={availabilityLoading}
-                  id="availability-switch"
-                />
-                <label htmlFor="availability-switch" className="text-sm">
-                  {lawyer?.availableForWork
-                    ? "Toggle to set unavailable"
-                    : "Toggle to set available"}
-                </label>
-                {availabilityLoading && (
-                  <Loader2 className="animate-spin h-4 w-4 ml-2 text-blue-500" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
