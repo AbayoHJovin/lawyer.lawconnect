@@ -6,6 +6,7 @@ import {
   clearError,
   loginLawyerByEmailThunk,
   loginLawyerByPhoneThunk,
+  fetchCurrentLawyer,
 } from "@/store/slices/authSlice";
 import { RootState } from "@/store";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LawyerDto } from "@/services/lawyerService";
+import { Loader2 } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -30,19 +32,47 @@ const Login = () => {
   const lawyer = useAppSelector(
     (state: RootState) => state.auth.user
   ) as LawyerDto | null;
+  const isAuthenticated = useAppSelector(
+    (state: RootState) => state.auth.isAuthenticated
+  );
   const error = useAppSelector((state: RootState) => state.auth.error);
   const loading = useAppSelector((state: RootState) => state.auth.loading);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const from = location.state?.from?.pathname || "/dashboard";
 
+  // Check if user is already authenticated in Redux state
+  // If not, try to fetch current lawyer from backend
   useEffect(() => {
-    if (lawyer) {
-      navigate(from, { replace: true });
-    }
-  }, [lawyer, dispatch, navigate, from]);
+    const checkAuthentication = async () => {
+      try {
+        if (!isAuthenticated) {
+          // Try to fetch current lawyer information from the backend
+          const resultAction = await dispatch(fetchCurrentLawyer()).unwrap();
+          if (resultAction) {
+            // If we successfully got a lawyer, navigate to dashboard
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+        } else if (lawyer) {
+          // If already authenticated with lawyer info in Redux, navigate to dashboard
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+      } catch (error) {
+        // If error or no user found, stay on login page
+        console.log("No authenticated user found, showing login form");
+      } finally {
+        // Finished checking
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuthentication();
+  }, [isAuthenticated, lawyer, dispatch, navigate]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +103,18 @@ const Login = () => {
       // error handled by slice
     }
   };
+
+  // Show loading state while we check authentication
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-muted/50">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">
+          Checking authentication status...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50 px-4">

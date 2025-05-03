@@ -30,6 +30,7 @@ import Consultations from "@/pages/Consultations";
 import ConsultationDetails from "@/pages/ConsultationDetails";
 import NotFound from "@/pages/NotFound";
 import Citizens from "@/pages/Citizens";
+import Reviews from "@/pages/Reviews";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,7 +68,7 @@ function AppRoutes() {
   }, [dispatch, location.pathname]);
 
   useEffect(() => {
-    if (isAuthenticated && !user) {
+    if (!isAuthenticated && !user) {
       fetchCurrentLawyer();
     }
   }, [isAuthenticated, user]);
@@ -93,6 +94,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Citizens />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reviews"
+        element={
+          <ProtectedRoute>
+            <Reviews />
           </ProtectedRoute>
         }
       />

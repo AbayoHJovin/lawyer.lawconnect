@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  updateLawyer,
   getAllSpecializations,
   LawyerDto,
   UpdateLawyerRequest,
@@ -30,7 +29,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Copy } from "lucide-react";
 import Layout from "@/components/Layout";
-import { fetchCurrentLawyer } from "@/store/slices/authSlice";
+import {
+  fetchCurrentLawyer,
+  updateLawyerThunk,
+} from "@/store/slices/authSlice";
 import {
   Popover,
   PopoverContent,
@@ -45,6 +47,7 @@ export default function Profile() {
   const [formData, setFormData] = useState<LawyerDto | null>(null);
   const [originalData, setOriginalData] = useState<LawyerDto | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const user = useSelector(
     (state: RootState) => state.auth.user
   ) as LawyerDto | null;
@@ -55,21 +58,6 @@ export default function Profile() {
       setOriginalData(user);
     }
   }, [user]);
-
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: (data: UpdateLawyerRequest) => updateLawyer(data),
-    onSuccess: (data) => {
-      toast.success("Profile updated successfully");
-      setIsEditing(false);
-      setOriginalData(data);
-      setFormData(data);
-      dispatch(fetchCurrentLawyer());
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update profile");
-    },
-  });
 
   // Fetch all specializations
   const { data: allSpecializations = [] } = useQuery<SpecializationDto[]>({
@@ -112,7 +100,7 @@ export default function Profile() {
     toast.success(`${fieldName} copied to clipboard`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData || !originalData) return;
     // Only include changed fields
@@ -156,7 +144,27 @@ export default function Profile() {
       setIsEditing(false);
       return;
     }
-    updateMutation.mutate(changes);
+
+    try {
+      setIsUpdating(true);
+      // Use the Redux thunk to update the profile
+      const resultAction = await dispatch(updateLawyerThunk(changes)).unwrap();
+
+      // Set local state with updated data
+      setFormData(resultAction);
+      setOriginalData(resultAction);
+      setIsEditing(false);
+
+      // Refresh the current lawyer data in the Redux store to ensure
+      // all components using this data are updated
+      await dispatch(fetchCurrentLawyer());
+
+      toast.success("Profile updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   if (!formData) {
@@ -400,8 +408,8 @@ export default function Profile() {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={updateMutation.isPending}>
-                      {updateMutation.isPending ? (
+                    <Button type="submit" disabled={isUpdating}>
+                      {isUpdating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Saving...

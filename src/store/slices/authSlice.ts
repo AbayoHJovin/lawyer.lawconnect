@@ -346,10 +346,13 @@ export const updateAvailabilityThunk = createAsyncThunk(
 
 export const updateLawyerThunk = createAsyncThunk(
   "auth/updateLawyer",
-  async (data: UpdateLawyerRequest, { rejectWithValue }) => {
+  async (data: UpdateLawyerRequest, { rejectWithValue, dispatch }) => {
     try {
-      const response = await updateLawyer(data);
-      return response; // This will be the full updated LawyerDto
+      // Call the service to update the lawyer profile
+      const updatedLawyer = await updateLawyer(data);
+
+      // Return the updated lawyer data to be stored in the state
+      return updatedLawyer;
     } catch (error: unknown) {
       const authError = error as AuthError;
       return rejectWithValue(

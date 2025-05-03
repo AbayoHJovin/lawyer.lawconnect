@@ -13,6 +13,7 @@ import {
   Menu,
   ChevronLeft,
   Home,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoutConfirmModal from "./LogoutConfirmModal";
@@ -31,7 +32,8 @@ const Sidebar = () => {
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Profile", href: "/profile", icon: User },
-    { name: "Citizens", href: "/citizens", icon: User },
+    { name: "Citizens", href: "/citizens", icon: Users },
+    { name: "Reviews", href: "/reviews", icon: Star },
     { name: "Consultations", href: "/consultations", icon: FileText },
   ];
 
