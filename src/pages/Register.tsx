@@ -34,6 +34,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import API from "@/lib/axios";
@@ -55,6 +62,14 @@ const Register = () => {
   const [error, setError] = useState<string | null>(null);
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [open, setOpen] = useState(false);
+
+  // Email verification states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [verificationError, setVerificationError] = useState("");
+  const [verificationLoading, setVerificationLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -114,6 +129,12 @@ const Register = () => {
       isValid = false;
     }
 
+    // Check email verification
+    if (formData.email && !isEmailVerified) {
+      newErrors.email = "Email must be verified";
+      isValid = false;
+    }
+
     // Validate phone
     if (
       !formData.phoneNumber ||
@@ -160,6 +181,11 @@ const Register = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Reset email verification if email changes
+    if (name === "email") {
+      setIsEmailVerified(false);
+    }
   };
 
   const handleSpecializationChange = (
@@ -171,6 +197,143 @@ const Register = () => {
         specializationName: spec.specializationName,
       })),
     }));
+  };
+
+  const handleSendVerification = async () => {
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        email: "Please enter a valid email address",
+      }));
+      return;
+    }
+
+    try {
+      setVerificationLoading(true);
+      setVerificationError("");
+
+      const response = await API.post("/mail/send", { email: formData.email });
+
+      if (response.data && response.data.message) {
+        // Check if the email is already verified
+        if (response.data.message.includes("already verified")) {
+          setIsEmailVerified(true);
+          toast({
+            title: "Email Already Verified",
+            description: "This email has already been verified.",
+          });
+        } else {
+          toast({
+            title: "Verification Email Sent",
+            description: response.data.message,
+          });
+          setShowOtpModal(true);
+        }
+      }
+    } catch (err: any) {
+      // Check if this is the "already verified" error
+      if (err.response?.data?.message?.includes("already verified")) {
+        setIsEmailVerified(true);
+        toast({
+          title: "Email Already Verified",
+          description: "This email has already been verified.",
+        });
+      } else {
+        setVerificationError(
+          err.response?.data?.message || "Failed to send verification email"
+        );
+        toast({
+          variant: "destructive",
+          title: "Verification Failed",
+          description:
+            err.response?.data?.message || "Failed to send verification email",
+        });
+      }
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    // Allow only one digit
+    if (!/^\d?$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto focus next input
+    if (value !== "" && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  // Add a new handler for pasting OTP
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").trim();
+
+    // Check if pasted content is a 6-digit number
+    if (/^\d{6}$/.test(pastedData)) {
+      const otpDigits = pastedData.split("");
+      setOtp(otpDigits);
+
+      // Focus the last input after pasting
+      const lastInput = document.getElementById("otp-5");
+      if (lastInput) lastInput.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) {
+      setVerificationError("Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    try {
+      setIsVerifying(true);
+      setVerificationError("");
+
+      const response = await API.post("/mail/confirm", {
+        email: formData.email,
+        otp: otpValue,
+      });
+
+      if (response.data && response.data.message === "Email verified.") {
+        setIsEmailVerified(true);
+        setShowOtpModal(false);
+        toast({
+          title: "Email Verified",
+          description: "Your email has been successfully verified.",
+        });
+      } else {
+        setVerificationError(response.data?.message || "Invalid OTP");
+      }
+    } catch (err: any) {
+      setVerificationError(
+        err.response?.data?.message || "Verification failed"
+      );
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: err.response?.data?.message || "Failed to verify OTP",
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    // Handle backspace to go to previous input
+    if (e.key === "Backspace" && otp[index] === "" && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      if (prevInput) prevInput.focus();
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -237,15 +400,59 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className={`${
+                          isEmailVerified
+                            ? "border-green-500 pr-10"
+                            : formErrors.email
+                            ? "border-red-500 pr-10"
+                            : ""
+                        }`}
+                        required
+                      />
+                      {isEmailVerified && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg
+                            className="w-5 h-5 text-green-500"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleSendVerification}
+                      disabled={
+                        !formData.email ||
+                        verificationLoading ||
+                        isEmailVerified
+                      }
+                      variant={isEmailVerified ? "outline" : "default"}
+                      size="sm"
+                      className="whitespace-nowrap"
+                    >
+                      {isEmailVerified
+                        ? "Verified ✓"
+                        : verificationLoading
+                        ? "Sending..."
+                        : "Verify Email"}
+                    </Button>
+                  </div>
                   {formErrors.email && (
                     <p className="text-sm text-destructive">
                       {formErrors.email}
@@ -468,6 +675,65 @@ const Register = () => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* OTP Verification Modal */}
+      <Dialog open={showOtpModal} onOpenChange={setShowOtpModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Email Verification</DialogTitle>
+            <DialogDescription>
+              Please enter the 6-digit OTP sent to {formData.email}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col space-y-4 py-4">
+            <div className="flex justify-center space-x-2">
+              {otp.map((digit, index) => (
+                <Input
+                  key={index}
+                  id={`otp-${index}`}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={index === 0 ? handleOtpPaste : undefined}
+                  maxLength={1}
+                  className="w-12 h-12 text-center text-lg"
+                  autoFocus={index === 0}
+                />
+              ))}
+            </div>
+
+            {verificationError && (
+              <Alert variant="destructive">
+                <AlertDescription>{verificationError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setShowOtpModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={isVerifying || otp.join("").length !== 6}
+              >
+                {isVerifying ? "Verifying..." : "Verify OTP"}
+              </Button>
+            </div>
+
+            <div className="text-center text-sm text-muted-foreground">
+              <Button
+                variant="link"
+                className="p-0 h-auto"
+                onClick={handleSendVerification}
+                disabled={verificationLoading}
+              >
+                {verificationLoading ? "Sending..." : "Resend OTP"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

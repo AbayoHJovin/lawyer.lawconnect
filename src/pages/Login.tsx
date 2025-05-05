@@ -5,7 +5,6 @@ import { AppDispatch, useAppSelector } from "@/store";
 import {
   clearError,
   loginLawyerByEmailThunk,
-  loginLawyerByPhoneThunk,
   fetchCurrentLawyer,
 } from "@/store/slices/authSlice";
 import { RootState } from "@/store";
@@ -38,7 +37,6 @@ const Login = () => {
   const error = useAppSelector((state: RootState) => state.auth.error);
   const loading = useAppSelector((state: RootState) => state.auth.loading);
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
 
@@ -88,22 +86,6 @@ const Login = () => {
       // error handled by slice
     }
   };
-
-  const handlePhoneLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone || !password) {
-      dispatch(clearError());
-      return;
-    }
-
-    try {
-      await dispatch(loginLawyerByPhoneThunk({ phone, password })).unwrap();
-      navigate("/dashboard", { replace: true });
-    } catch (err) {
-      // error handled by slice
-    }
-  };
-
   // Show loading state while we check authentication
   if (checkingAuth) {
     return (
@@ -130,14 +112,13 @@ const Login = () => {
           <CardHeader>
             <CardTitle className="text-2xl text-center">Sign In</CardTitle>
             <CardDescription className="text-center">
-              Access your account using email or phone
+              Access your account using email
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="email" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="email">Email</TabsTrigger>
-                <TabsTrigger value="phone">Phone</TabsTrigger>
               </TabsList>
               <TabsContent value="email">
                 <form onSubmit={handleEmailLogin} className="space-y-4">
@@ -170,40 +151,6 @@ const Login = () => {
                   )}
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign In with Email"}
-                  </Button>
-                </form>
-              </TabsContent>
-              <TabsContent value="phone">
-                <form onSubmit={handlePhoneLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="Enter your phone number"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Signing in..." : "Sign In with Phone"}
                   </Button>
                 </form>
               </TabsContent>

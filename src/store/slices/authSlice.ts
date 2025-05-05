@@ -1,9 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { loginByEmail, loginByPhone } from "@/services/authService";
+import { loginByEmail } from "@/services/authService";
 import {
   LawyerDto,
   lawyerLoginByEmail,
-  lawyerLoginByPhone,
   LawyerLoginResponse,
   updateLawyer,
 } from "@/services/lawyerService";
@@ -52,11 +51,6 @@ interface AuthState {
 
 interface LoginByEmailPayload {
   email: string;
-  password: string;
-}
-
-interface LoginByPhonePayload {
-  phoneNumber: string;
   password: string;
 }
 
@@ -166,33 +160,6 @@ export const loginByEmailThunk = createAsyncThunk(
     }
   }
 );
-
-export const loginByPhoneThunk = createAsyncThunk(
-  "auth/loginByPhone",
-  async (credentials: LoginByPhonePayload, { dispatch, rejectWithValue }) => {
-    try {
-      const response = await loginByPhone(
-        credentials.phoneNumber,
-        credentials.password
-      );
-      // Fetch complete lawyer data using the email from the login response
-      const userResponse = await API.get<{ message: string; data: any }>(
-        `/lawyers/find-by-email?email=${response.citizen.email}`
-      );
-      const lawyer = userResponse.data.data;
-      dispatch(setUser(lawyer));
-      return {
-        citizen: lawyer,
-      };
-    } catch (error: unknown) {
-      const authError = error as AuthError;
-      return rejectWithValue(
-        authError.response?.data?.message || "Login failed"
-      );
-    }
-  }
-);
-
 export const registerCitizen = createAsyncThunk(
   "auth/registerCitizen",
   async (payload: RegisterPayload, { rejectWithValue }) => {
@@ -278,30 +245,6 @@ export const loginLawyerByEmailThunk = createAsyncThunk(
   }
 );
 
-export const loginLawyerByPhoneThunk = createAsyncThunk(
-  "auth/loginLawyerByPhone",
-  async (
-    credentials: { phone: string; password: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response: LawyerLoginResponse = await lawyerLoginByPhone(
-        credentials.phone,
-        credentials.password
-      );
-      // Fetch the latest lawyer data from the backend
-      const userResponse = await API.get<{ message: string; data: any }>(
-        `/lawyers/find-by-phone?phone=${encodeURIComponent(credentials.phone)}`
-      );
-      return {
-        lawyer: userResponse.data.data,
-      };
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Login failed");
-    }
-  }
-);
-
 export const fetchCurrentLawyer = createAsyncThunk(
   "auth/fetchCurrentLawyer",
   async (_, { getState, rejectWithValue }) => {
@@ -320,9 +263,7 @@ export const fetchCurrentLawyer = createAsyncThunk(
       return rejectWithValue("Failed to fetch lawyer data");
     } catch (error: unknown) {
       const authError = error as AuthError;
-      return rejectWithValue(
-        authError.response?.data?.message || "Failed to fetch current lawyer"
-      );
+      return rejectWithValue(authError.response?.data?.message || "");
     }
   }
 );
@@ -415,24 +356,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Login by Phone
-      .addCase(loginByPhoneThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(loginByPhoneThunk.fulfilled, (state, action) => {
-        state.isAuthenticated = true;
-        state.user = action.payload.citizen;
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(loginByPhoneThunk.rejected, (state, action) => {
-        state.isAuthenticated = false;
-        state.user = null;
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
       .addCase(logoutThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -465,23 +388,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Login Lawyer by Phone
-      .addCase(loginLawyerByPhoneThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(loginLawyerByPhoneThunk.fulfilled, (state, action) => {
-        state.isAuthenticated = true;
-        state.user = action.payload.lawyer;
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(loginLawyerByPhoneThunk.rejected, (state, action) => {
-        state.isAuthenticated = false;
-        state.user = null;
-        state.loading = false;
-        state.error = action.payload as string;
-      })
+
       // Fetch Current Lawyer
       .addCase(fetchCurrentLawyer.pending, (state) => {
         state.loading = true;

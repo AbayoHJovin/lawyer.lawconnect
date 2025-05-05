@@ -59,13 +59,6 @@ export const getLawyerByEmail = async (email: string): Promise<LawyerDto[]> => {
   return res.data;
 };
 
-export const getLawyerByPhone = async (phone: string): Promise<LawyerDto[]> => {
-  const res = await API.get(
-    `/lawyers/find-by-phone?phone=${encodeURIComponent(phone)}`
-  );
-  return res.data;
-};
-
 export const getLawyersByRatingAbove = async (
   value: number
 ): Promise<LawyerDto[]> => {
@@ -134,33 +127,6 @@ export const lawyerLoginByEmail = async (
     const response = await API.post<LawyerLoginResponse>(
       "/lawyers/login-by-email",
       { email, password },
-      { withCredentials: true }
-    );
-    return response.data;
-  } catch (error) {
-    if (error instanceof AxiosError) {
-      const errorMessage = error.response?.data?.message || "Login failed";
-      const errorCode = error.response?.data?.code || "AUTH_ERROR";
-      throw {
-        message: errorMessage,
-        code: errorCode,
-      } as LawyerAuthError;
-    }
-    throw {
-      message: "An unexpected error occurred",
-      code: "UNKNOWN_ERROR",
-    } as LawyerAuthError;
-  }
-};
-
-export const lawyerLoginByPhone = async (
-  phone: string,
-  password: string
-): Promise<LawyerLoginResponse> => {
-  try {
-    const response = await API.post<LawyerLoginResponse>(
-      "/lawyers/login-by-phone",
-      { phone, password },
       { withCredentials: true }
     );
     return response.data;
