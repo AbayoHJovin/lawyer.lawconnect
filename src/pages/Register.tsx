@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import API from "@/lib/axios";
 
@@ -56,6 +56,7 @@ interface SpecializationRequest {
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -70,6 +71,9 @@ const Register = () => {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verificationError, setVerificationError] = useState("");
   const [verificationLoading, setVerificationLoading] = useState(false);
+
+  // Get previous path from location state or default to home
+  const previousPath = location.state?.previousPath || "/";
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -197,6 +201,15 @@ const Register = () => {
         specializationName: spec.specializationName,
       })),
     }));
+  };
+
+  const handleNavigateBack = () => {
+    // Navigate back to the previous path or to home if no previous path
+    navigate(
+      previousPath !== "/login" && previousPath !== "/register"
+        ? previousPath
+        : "/"
+    );
   };
 
   const handleSendVerification = async () => {
@@ -366,7 +379,18 @@ const Register = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50 px-4">
       <div className="w-full max-w-4xl">
-        <div className="text-center mb-8">
+        <div className="text-center mb-4 relative">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={handleNavigateBack}
+              title="Go back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold text-primary">LawConnect Pro</h1>
           <p className="text-muted-foreground mt-2">
             Create your lawyer account
@@ -668,7 +692,16 @@ const Register = () => {
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link to="/login" className="text-primary hover:underline">
+              <Link
+                to="/login"
+                state={{
+                  previousPath:
+                    location.pathname !== "/login"
+                      ? location.state?.previousPath || location.pathname
+                      : "/",
+                }}
+                className="text-primary hover:underline"
+              >
                 Sign in
               </Link>
             </p>

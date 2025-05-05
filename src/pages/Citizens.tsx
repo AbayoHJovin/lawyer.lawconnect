@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import API from "@/lib/axios";
 import {
   Table,
@@ -76,12 +76,20 @@ const ITEMS_PER_PAGE = 9; // Adjust based on your needs
 
 const Citizens = () => {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [currentPage, setCurrentPage] = useState(1);
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize state from URL parameters
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    (searchParams.get("view") as ViewMode) || "grid"
+  );
+  const [currentPage, setCurrentPage] = useState(
+    parseInt(searchParams.get("page") || "1", 10)
+  );
   const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    location: "",
-    language: "",
+    search: searchParams.get("search") || "",
+    location: searchParams.get("location") || "",
+    language: searchParams.get("language") || "",
   });
 
   const getAllCitizens = async (): Promise<ApiResponse> => {
@@ -124,7 +132,8 @@ const Citizens = () => {
         ? citizen.fullName
             .toLowerCase()
             .includes(filters.search.toLowerCase()) ||
-          citizen.email.toLowerCase().includes(filters.search.toLowerCase())
+          citizen.email.toLowerCase().includes(filters.search.toLowerCase()) ||
+          citizen.id.includes(filters.search)
         : true;
 
       const matchesLocation =
@@ -149,6 +158,21 @@ const Citizens = () => {
     return filteredCitizens.slice(start, end);
   }, [filteredCitizens, currentPage]);
 
+  // Update URL when filters or pagination changes
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    // Only add non-empty parameters to URL
+    if (filters.search) params.set("search", filters.search);
+    if (filters.location) params.set("location", filters.location);
+    if (filters.language) params.set("language", filters.language);
+    if (currentPage > 1) params.set("page", currentPage.toString());
+    if (viewMode !== "grid") params.set("view", viewMode);
+
+    // Update URL without refreshing the page
+    setSearchParams(params);
+  }, [filters, currentPage, viewMode, setSearchParams]);
+
   const handleFilterChange = (key: FilterKey, value: FilterValue) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1); // Reset to first page when filters change
@@ -156,6 +180,10 @@ const Citizens = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
   };
 
   if (isLoading) {
@@ -299,7 +327,7 @@ const Citizens = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name or email..."
+                placeholder="Search by name, email, or ID..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
                 className="pl-10"
@@ -347,7 +375,7 @@ const Citizens = () => {
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="icon"
-                onClick={() => setViewMode("grid")}
+                onClick={() => handleViewModeChange("grid")}
                 className="w-10 h-10"
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -355,7 +383,7 @@ const Citizens = () => {
               <Button
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="icon"
-                onClick={() => setViewMode("list")}
+                onClick={() => handleViewModeChange("list")}
                 className="w-10 h-10"
               >
                 <List className="h-4 w-4" />
@@ -364,10 +392,27 @@ const Citizens = () => {
           </div>
         </div>
 
-        {/* Results Count */}
-        <div className="mb-4 text-sm text-muted-foreground">
-          Showing {paginatedCitizens.length} of {filteredCitizens.length}{" "}
-          citizens
+        {/* Results Count and Search Info */}
+        <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+          <div className="text-sm text-muted-foreground">
+            Showing {paginatedCitizens.length} of {filteredCitizens.length}{" "}
+            citizens
+          </div>
+          {filters.search && (
+            <div className="text-sm">
+              <Badge variant="outline" className="font-normal">
+                Search: {filters.search}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 ml-1 hover:bg-transparent"
+                  onClick={() => handleFilterChange("search", "")}
+                >
+                  ×
+                </Button>
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* Content */}

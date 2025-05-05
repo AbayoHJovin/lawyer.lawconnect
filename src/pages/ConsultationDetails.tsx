@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getConsultationById,
   deleteConsultation,
+  changeConsultationStatus,
   type ConsultationStatus,
+  type ChangeConsultationStatusRequest,
 } from "@/services/consultationService";
 import { getLawyerPhoneNumber } from "@/services/lawyerService";
 import Layout from "@/components/Layout";
@@ -13,6 +15,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +26,9 @@ import {
   User,
   MessageSquare,
   Trash2,
+  RefreshCw,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -38,7 +44,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState } from "react";
+
+const statusTransitions: Record<ConsultationStatus, ConsultationStatus[]> = {
+  PENDING: ["ACCEPTED", "REJECTED"],
+  ACCEPTED: ["ONGOING", "REJECTED"],
+  REJECTED: [],
+  ONGOING: ["COMPLETED"],
+  COMPLETED: [],
+};
 
 const ConsultationDetails = () => {
   const { consultationId } = useParams<{ consultationId: string }>();
@@ -46,6 +67,8 @@ const ConsultationDetails = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState<ConsultationStatus | "">("");
+  const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
   const {
     data: consultationResponse,
@@ -79,11 +102,48 @@ const ConsultationDetails = () => {
     },
   });
 
+  const { mutate: handleStatusChange, isPending: isChangingStatus } =
+    useMutation({
+      mutationFn: (request: ChangeConsultationStatusRequest) =>
+        changeConsultationStatus(request),
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: `Consultation status changed to ${newStatus}`,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["consultation", consultationId],
+        });
+        queryClient.invalidateQueries({ queryKey: ["consultations"] });
+        setNewStatus("");
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message ||
+            "Failed to change consultation status",
+          variant: "destructive",
+        });
+      },
+    });
+
   const onDeleteConfirm = () => {
     if (consultationId) {
       handleDelete(consultationId);
     }
     setShowDeleteDialog(false);
+  };
+
+  const onStatusChange = () => {
+    if (!consultationId || !newStatus) return;
+
+    const request: ChangeConsultationStatusRequest = {
+      consultationId,
+      status: newStatus as ConsultationStatus,
+    };
+
+    handleStatusChange(request);
   };
 
   const canShowWhatsApp =
@@ -132,6 +192,23 @@ const ConsultationDetails = () => {
         return "Ongoing";
       default:
         return "Unknown";
+    }
+  };
+
+  const getStatusIcon = (status: ConsultationStatus) => {
+    switch (status) {
+      case "COMPLETED":
+        return <CheckCircle className="h-4 w-4 mr-2" />;
+      case "ACCEPTED":
+        return <CheckCircle className="h-4 w-4 mr-2" />;
+      case "PENDING":
+        return <Clock className="h-4 w-4 mr-2" />;
+      case "REJECTED":
+        return <AlertCircle className="h-4 w-4 mr-2" />;
+      case "ONGOING":
+        return <RefreshCw className="h-4 w-4 mr-2" />;
+      default:
+        return null;
     }
   };
 
@@ -218,6 +295,9 @@ const ConsultationDetails = () => {
     );
   }
 
+  const availableTransitions = statusTransitions[consultation.status] || [];
+  const canChangeStatus = availableTransitions.length > 0;
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -265,16 +345,16 @@ const ConsultationDetails = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium mb-2">
-                Appointed Lawyer Information
+                Appointed Citizen Information
               </h3>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
                   Lawyer:{" "}
                   <a
-                    href={`${API_BASE_URL}/lawyers/${consultation.lawyerID}`}
+                    href={`/citizens?search=${consultation.citizenId}`}
                     className="text-blue-500 hover:underline"
                   >
-                    View lawyer profile
+                    View citizen profile
                   </a>
                 </p>
                 {canShowWhatsApp && (
@@ -314,11 +394,64 @@ const ConsultationDetails = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium mb-2">Status History</h3>
-              <p className="text-sm text-muted-foreground">
-                Current status: {getStatusText(consultation.status)}
-              </p>
+              <div className="flex items-center">
+                {getStatusIcon(consultation.status)}
+                <span className="text-sm text-muted-foreground">
+                  Current status: {getStatusText(consultation.status)}
+                </span>
+              </div>
             </div>
           </CardContent>
+          {canChangeStatus && (
+            <CardFooter className="flex flex-col items-start gap-4 border-t pt-6">
+              <h3 className="text-sm font-medium">Change Status</h3>
+              <div className="flex flex-col sm:flex-row w-full gap-3">
+                <Select
+                  value={newStatus}
+                  onValueChange={(value) =>
+                    setNewStatus(value as ConsultationStatus)
+                  }
+                  disabled={isChangingStatus}
+                >
+                  <SelectTrigger className="w-full sm:w-[250px]">
+                    <SelectValue placeholder="Select new status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTransitions.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        <div className="flex items-center">
+                          {getStatusIcon(status)}
+                          {getStatusText(status)}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={onStatusChange}
+                  disabled={isChangingStatus || !newStatus}
+                  className="gap-2"
+                >
+                  {isChangingStatus ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Update Status
+                    </>
+                  )}
+                </Button>
+              </div>
+              {!canChangeStatus && consultation.status !== "PENDING" && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  This consultation is in a final state and cannot be changed.
+                </p>
+              )}
+            </CardFooter>
+          )}
         </Card>
 
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

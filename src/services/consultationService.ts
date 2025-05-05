@@ -28,6 +28,11 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export interface ChangeConsultationStatusRequest {
+  consultationId: string;
+  status: ConsultationStatus;
+}
+
 export const createConsultation = async (
   request: CreateConsultationRequest
 ): Promise<ApiResponse<ConsultationDto>> => {
@@ -58,6 +63,7 @@ export const getConsultationStats = (consultations: ConsultationDto[]) => {
     accepted: consultations.filter((c) => c.status === "ACCEPTED").length,
     rejected: consultations.filter((c) => c.status === "REJECTED").length,
     completed: consultations.filter((c) => c.status === "COMPLETED").length,
+    ongoing: consultations.filter((c) => c.status === "ONGOING").length,
     total: consultations.length,
   };
 };
@@ -67,6 +73,16 @@ export const deleteConsultation = async (
 ): Promise<ApiResponse<void>> => {
   const response = await API.delete<ApiResponse<void>>(
     `/consultations/lawy-cit/delete/${consultationId}`
+  );
+  return response.data;
+};
+
+export const changeConsultationStatus = async (
+  request: ChangeConsultationStatusRequest
+): Promise<ApiResponse<void>> => {
+  const response = await API.patch<ApiResponse<void>>(
+    "/consultations/lawy-cit/change-status",
+    request
   );
   return response.data;
 };

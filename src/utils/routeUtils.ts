@@ -3,6 +3,7 @@ export const PUBLIC_ROUTES = [
   "/",
   "/login",
   "/register",
+  "/reset-password",
   "/citizens",
   "/citizenId/:citizenId", // Individual lawyer profiles are public
 ];
