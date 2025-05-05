@@ -257,10 +257,10 @@ const Consultations = () => {
                       <span className="">
                         Lawyer:{" "}
                         <a
-                          href={`${API_BASE_URL}/lawyers/${consultation.lawyerID}`}
+                          href={`/citizens?search=${consultation.citizenId}`}
                           className="text-blue-500 hover:underline"
                         >
-                          View lawyer profile
+                          View citizen
                         </a>
                       </span>
                     </div>
