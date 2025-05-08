@@ -51,21 +51,18 @@ const Sidebar = () => {
           <Menu size={20} />
         </Button>
       </div>
+
       {/* Sidebar */}
-      <div
+      <aside
         className={cn(
-          "bg-sidebar text-sidebar-foreground h-screen fixed z-40 shadow-lg transition-transform duration-300",
-          "w-64",
-          "md:translate-x-0 md:block",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "md:static md:shadow-none md:w-64",
-          "top-0 left-0 overflow-y-auto overflow-x-hidden"
+          "fixed inset-y-0 left-0 bg-sidebar text-sidebar-foreground z-40 w-64 shadow-lg transition-transform duration-300",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          "flex flex-col h-screen"
         )}
-        style={{ left: 0, top: 0 }}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Header */}
-          <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
+          <div className="p-4 flex items-center justify-between border-b border-sidebar-border sticky top-0 bg-sidebar z-10">
             <h2 className="text-xl font-bold">LawConnect</h2>
             <Button
               variant="ghost"
@@ -76,6 +73,7 @@ const Sidebar = () => {
               <ChevronLeft size={20} />
             </Button>
           </div>
+
           {/* User Info */}
           <div className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
@@ -92,8 +90,9 @@ const Sidebar = () => {
               </div>
             </div>
           </div>
-          {/* Navigation */}
-          <nav className="flex-1 py-4">
+
+          {/* Navigation - This section should scroll if needed */}
+          <nav className="flex-1 py-4 overflow-y-auto">
             <ul className="space-y-1 px-2">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -117,21 +116,21 @@ const Sidebar = () => {
               })}
             </ul>
           </nav>
-          {/* Logout */}
-          <div className="p-4 border-t border-sidebar-border">
+
+          {/* Logout - This section stays at the bottom */}
+          <div className="p-4 border-t border-sidebar-border mt-auto bg-sidebar">
             <Button
               variant="ghost"
               onClick={() => setShowLogoutModal(true)}
-              className={
-                "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent/50"
-              }
+              className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent/50"
             >
               <LogOut size={20} />
               <span className="ml-2">Logout</span>
             </Button>
           </div>
         </div>
-      </div>
+      </aside>
+
       {/* Backdrop for mobile */}
       {mobileOpen && (
         <div

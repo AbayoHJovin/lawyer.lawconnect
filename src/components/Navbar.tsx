@@ -123,19 +123,19 @@ const Navbar = () => {
             </Sheet>
           </div>
 
-          <Link to="/" className="text-xl font-bold text-primary">
-            LawConnect
-          </Link>
+        <Link to="/" className="text-xl font-bold text-primary">
+          LawConnect
+        </Link>
         </div>
 
         {/* Desktop Navigation - Only visible on large screens */}
         <div className="hidden lg:flex items-center gap-4">
           {lawyer && (
-            <Link to="/citizens">
-              <Button variant="outline" className="font-semibold">
-                Discover Citizens
-              </Button>
-            </Link>
+          <Link to="/citizens">
+            <Button variant="outline" className="font-semibold">
+              Discover Citizens
+            </Button>
+          </Link>
           )}
 
           {lawyer ? (

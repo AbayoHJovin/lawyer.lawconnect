@@ -35,6 +35,14 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 interface RatingDto {
   ratingId: string;
@@ -48,6 +56,9 @@ interface RatingsResponse {
   message: string;
   data: RatingDto[];
 }
+
+// Colors for pie chart segments
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#A569BD"];
 
 const Reviews = () => {
   const lawyer = useSelector(
@@ -98,6 +109,28 @@ const Reviews = () => {
         ratings.length
       : 0;
 
+  // Prepare data for pie chart
+  const prepareChartData = () => {
+    const ratingCounts = [0, 0, 0, 0, 0]; // For ratings 1-5
+
+    ratings.forEach((rating) => {
+      const index = rating.ratingScore - 1;
+      if (index >= 0 && index < 5) {
+        ratingCounts[index]++;
+      }
+    });
+
+    return [
+      { name: "5 Star", value: ratingCounts[4] },
+      { name: "4 Star", value: ratingCounts[3] },
+      { name: "3 Star", value: ratingCounts[2] },
+      { name: "2 Star", value: ratingCounts[1] },
+      { name: "1 Star", value: ratingCounts[0] },
+    ].filter((item) => item.value > 0); // Only include ratings that have at least one review
+  };
+
+  const chartData = prepareChartData();
+
   const renderStars = (score: number) => {
     const stars = [];
     const fullStars = Math.floor(score);
@@ -130,6 +163,21 @@ const Reviews = () => {
     }
 
     return <div className="flex">{stars}</div>;
+  };
+
+  // Custom tooltip for pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border p-2 rounded-md shadow-sm">
+          <p className="font-medium">{`${payload[0].name}: ${payload[0].value}`}</p>
+          <p className="text-xs text-muted-foreground">{`${Math.round(
+            (payload[0].value / ratings.length) * 100
+          )}% of total`}</p>
+        </div>
+      );
+    }
+    return null;
   };
 
   // Loading state
@@ -228,6 +276,43 @@ const Reviews = () => {
                       {ratings.length === 1 ? "review" : "reviews"}
                     </div>
                   </div>
+
+                  {/* Pie Chart */}
+                  {ratings.length > 0 ? (
+                    <div className="h-[200px] w-full mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={2}
+                            dataKey="value"
+                            labelLine={false}
+                            label={({ name, percent }) =>
+                              `${name} ${(percent * 100).toFixed(0)}%`
+                            }
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center items-center h-[200px] border border-dashed rounded-md">
+                      <p className="text-muted-foreground text-sm">
+                        No ratings to display
+                      </p>
+                    </div>
+                  )}
 
                   {/* Rating Breakdown */}
                   <div className="space-y-2 mt-6">

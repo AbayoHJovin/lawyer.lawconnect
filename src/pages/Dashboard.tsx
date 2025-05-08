@@ -20,6 +20,7 @@ import {
   Award,
   CheckCircle,
   Loader2,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
@@ -29,10 +30,31 @@ import {
   updateAvailabilityThunk,
 } from "@/store/slices/authSlice";
 import { Switch } from "@/components/ui/switch";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+import {
+  getConsultationStats,
+  ConsultationStatus,
+} from "@/services/consultationService";
 
 const fetchLawyerConsultations = async () => {
   const res = await API.get(`/consultations/lawy-cit/get-by-lawyer`);
   return res.data.data;
+};
+
+// Colors for the consultation status pie chart
+const STATUS_COLORS = {
+  PENDING: "#f59e0b", // Amber/Yellow
+  ACCEPTED: "#3b82f6", // Blue
+  REJECTED: "#ef4444", // Red
+  COMPLETED: "#10b981", // Green
+  ONGOING: "#8b5cf6", // Purple
 };
 
 const Dashboard = () => {
@@ -68,6 +90,58 @@ const Dashboard = () => {
   const numSpecializations = lawyer?.specializations?.length ?? 0;
   const yearsOfExperience = lawyer?.yearsOfExperience ?? 0;
   const isAvailable = lawyer?.availableForWork ? "Available" : "Not Available";
+
+  // Prepare consultation stats and chart data
+  const consultationStats = consultations
+    ? getConsultationStats(consultations)
+    : null;
+
+  const consultationChartData = consultationStats
+    ? [
+        {
+          name: "Pending",
+          value: consultationStats.pending,
+          color: STATUS_COLORS.PENDING,
+        },
+        {
+          name: "Accepted",
+          value: consultationStats.accepted,
+          color: STATUS_COLORS.ACCEPTED,
+        },
+        {
+          name: "Rejected",
+          value: consultationStats.rejected,
+          color: STATUS_COLORS.REJECTED,
+        },
+        {
+          name: "Completed",
+          value: consultationStats.completed,
+          color: STATUS_COLORS.COMPLETED,
+        },
+        {
+          name: "Ongoing",
+          value: consultationStats.ongoing,
+          color: STATUS_COLORS.ONGOING,
+        },
+      ].filter((item) => item.value > 0)
+    : [];
+
+  // Custom tooltip for the pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border p-2 rounded-md shadow-sm">
+          <p className="font-medium">{`${payload[0].name}: ${payload[0].value}`}</p>
+          <p className="text-xs text-muted-foreground">
+            {`${Math.round(
+              (payload[0].value / (consultationStats?.total || 1)) * 100
+            )}% of total`}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const handleToggleAvailability = async () => {
     if (!lawyerId) return;
@@ -236,7 +310,150 @@ const Dashboard = () => {
           </Card>
         </div>
 
+        {/* Consultation Summary with Pie Chart */}
         <div className="grid gap-4 md:grid-cols-2">
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Consultation Summary</CardTitle>
+                  <CardDescription>
+                    Overview of your consultations
+                  </CardDescription>
+                </div>
+                <PieChartIcon className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {consultations && consultations.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Pie Chart */}
+                  <div className="h-[220px] w-full mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={consultationChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          dataKey="value"
+                          labelLine={false}
+                          label={({ name, percent, x, y, midAngle }) => {
+                            const radius = 90;
+                            const radian = Math.PI / 180;
+                            const sin = Math.sin(-midAngle * radian);
+                            const cos = Math.cos(-midAngle * radian);
+                            const tx = x + (cos >= 0 ? 1 : -1) * 20;
+                            const ty = y;
+
+                            return (
+                              <text
+                                x={tx}
+                                y={ty}
+                                fill="#888"
+                                textAnchor={cos >= 0 ? "start" : "end"}
+                                dominantBaseline="middle"
+                                fontSize={12}
+                                fontWeight="medium"
+                              >
+                                {name} ({(percent * 100).toFixed(0)}%)
+                              </text>
+                            );
+                          }}
+                        >
+                          {consultationChartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.color}
+                              stroke="white"
+                              strokeWidth={1}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Status Summary */}
+                  <div className="grid grid-cols-2 gap-3 text-sm mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-yellow-500 mr-2"></div>
+                        <span>Pending</span>
+                      </div>
+                      <span className="font-medium">
+                        {consultationStats?.pending || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-blue-500 mr-2"></div>
+                        <span>Accepted</span>
+                      </div>
+                      <span className="font-medium">
+                        {consultationStats?.accepted || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-green-500 mr-2"></div>
+                        <span>Completed</span>
+                      </div>
+                      <span className="font-medium">
+                        {consultationStats?.completed || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
+                        <span>Rejected</span>
+                      </div>
+                      <span className="font-medium">
+                        {consultationStats?.rejected || 0}
+                      </span>
+                    </div>
+                    {consultationStats && consultationStats.ongoing > 0 && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="h-3 w-3 rounded-full bg-purple-500 mr-2"></div>
+                          <span>Ongoing</span>
+                        </div>
+                        <span className="font-medium">
+                          {consultationStats.ongoing}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between col-span-2 border-t pt-2 mt-1">
+                      <span className="font-semibold">Total</span>
+                      <span className="font-semibold">
+                        {consultationStats?.total || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+                  <h3 className="text-lg font-medium">No consultations yet</h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                    You haven't received any consultation requests. Your first
+                    consultation will appear here.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/consultations")}
+                    className="mt-4"
+                  >
+                    View Consultations
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Latest Consultations</CardTitle>
@@ -258,7 +475,9 @@ const Dashboard = () => {
                             ? "bg-blue-500"
                             : consultation.status === "PENDING"
                             ? "bg-yellow-500"
-                            : "bg-gray-500"
+                            : consultation.status === "ONGOING"
+                            ? "bg-purple-500"
+                            : "bg-red-500"
                         }`}
                       />
                       <div>
@@ -283,7 +502,9 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
